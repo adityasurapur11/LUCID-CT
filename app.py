@@ -429,20 +429,29 @@ def main():
                 "scan_format": scan_info,
                 "slice_count": D
             }
-            
-            pdf_bytes = report_gen.generate_pdf_bytes(
-                patient_info=patient_info,
-                prediction_results=unc_results,
-                verification_results=verification,
-                lung_rads_info=lung_rads_info,
-                gradcam_img_bytes=cam_bytes
-            )
+
+            report_args = {
+                "patient_info": patient_info,
+                "prediction_results": unc_results,
+                "verification_results": verification,
+                "lung_rads_info": lung_rads_info,
+                "gradcam_img_bytes": cam_bytes,
+            }
+            pdf_bytes = report_gen.generate_pdf_bytes(**report_args)
+            image_bytes = report_gen.generate_image_bytes(**report_args)
             
             st.download_button(
                 label="⬇️ Download Decision-Support PDF Report",
                 data=pdf_bytes,
                 file_name=f"Lung_RADS_Report_{patient_info['patient_id']}.pdf",
                 mime="application/pdf",
+                use_container_width=True
+            )
+            st.download_button(
+                label="⬇️ Download Decision-Support Image Report",
+                data=image_bytes,
+                file_name=f"Lung_RADS_Report_{patient_info['patient_id']}.png",
+                mime="image/png",
                 use_container_width=True
             )
 
