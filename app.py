@@ -399,7 +399,7 @@ def main():
                 st.progress(min(float(u_val), 1.0))
 
     with tab5:
-        st.subheader("ACR Lung-RADS™ v2022 Assessment & Clinical PDF Report")
+        st.subheader("Lung-RADS Estimate & Clinical PDF Report")
         
         c_col1, c_col2 = st.columns([1.2, 1])
         with c_col1:
@@ -407,10 +407,11 @@ def main():
             st.markdown(f"**Malignancy Risk Tier:** `{lung_rads_info['risk_tier']}`")
             st.markdown(f"**Estimated Nodule Diameter:** `~{lung_rads_info['nodule_diameter_mm']:.1f} mm`")
             st.info(f"**Fleischner Management Guideline:** {lung_rads_info['management']}")
+            st.caption(lung_rads_info["assessment_note"])
 
         with c_col2:
-            st.markdown("#### 📄 Export Official Clinical Report")
-            st.markdown("Generate a publication-grade DICOM-SR compliant PDF report including patient metadata, Lung-RADS score, self-verification audit, and Grad-CAM snapshot.")
+            st.markdown("#### 📄 Export Decision-Support Report")
+            st.markdown("Generate a PDF with patient metadata, the estimated category, self-verification details, and a Grad-CAM snapshot.")
             
             # Prepare image bytes for Grad-CAM overlay snapshot
             fig_buf = io.BytesIO()
@@ -438,7 +439,7 @@ def main():
             )
             
             st.download_button(
-                label="⬇️ Download Official Clinical PDF Report",
+                label="⬇️ Download Decision-Support PDF Report",
                 data=pdf_bytes,
                 file_name=f"Lung_RADS_Report_{patient_info['patient_id']}.pdf",
                 mime="application/pdf",

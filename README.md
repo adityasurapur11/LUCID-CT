@@ -48,7 +48,8 @@ LUNG/
 │   ├── model.py                # Hybrid 3D CNN-Transformer multi-task architecture
 │   ├── uncertainty_calibration.py # Temperature scaling & MC Dropout uncertainty estimation
 │   ├── xai.py                  # 3D/2D Grad-CAM implementation & heatmap overlay generator
-│   └── self_verification.py    # Adaptive clinical self-verification engine & safety rules
+│   ├── self_verification.py    # Adaptive clinical self-verification engine & safety rules
+│   └── report_generator.py     # Lung-RADS estimate and downloadable clinical PDF report
 └── tests/
     └── test_model.py           # Pytest unit tests for all components
 ```
@@ -118,3 +119,4 @@ You can run the system immediately using the **built-in synthetic scans**, or up
 2. **🔥 XAI (Grad-CAM) Visual Explanations**: Side-by-side view of raw activation heatmaps and CT overlays showing exact regions driving AI predictions.
 3. **🛡️ Self-Verification & Clinical Diagnosis**: Displays the malignancy probability card, safety verification badge (*Verified Consistent*, *High Uncertainty*, *Discrepancy Flagged*), and 6 radiological nodule traits.
 4. **📊 Uncertainty & Calibration Analytics**: Detailed breakdown of model confidence, epistemic uncertainty, aleatoric noise, and calibration curves.
+5. **📄 Lung-RADS™ & PDF Report**: Displays an estimated size-based category and exports model output, verification details, and a Grad-CAM image. The estimate assumes a baseline solid nodule and is not an official Lung-RADS assessment.
