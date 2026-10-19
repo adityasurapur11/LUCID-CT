@@ -8,6 +8,7 @@ Validates individual auxiliary radiological predictions against regional physica
 
 from typing import Dict, List, Any, Tuple, Optional
 import numpy as np
+from src.preprocessing import segment_lung_mask_slice
 
 
 class TraitSpecificRegionalVerifier:
@@ -28,34 +29,35 @@ class TraitSpecificRegionalVerifier:
         3. Peri-nodular parenchymal background (outer ring)
         """
         D, H, W = volume.shape
-        # Find slice with highest central intensity variance / candidate nodule
+        # Find slice with candidate nodule
         center_d = D // 2
-        
-        # Binary thresholding within central lung field to find nodule mass
         mid_slice = volume[center_d].copy()
-        h_mid, w_mid = H // 2, W // 2
-        # Crop central 60%
-        margin_h, margin_w = int(H * 0.2), int(W * 0.2)
-        search_region = mid_slice[margin_h:H-margin_h, margin_w:W-margin_w]
-        
-        # Find peak location in search region
-        y_rel, x_rel = np.unravel_index(np.argmax(search_region), search_region.shape)
-        center_y = y_rel + margin_h
-        center_x = x_rel + margin_w
+
+        # Isolate lung parenchyma to avoid anchoring on bone/spine or mediastinal vessels
+        lung_mask = segment_lung_mask_slice(mid_slice)
+        if lung_mask.sum() > 50:
+            masked_lung = np.where(lung_mask > 0, mid_slice, 0.0)
+            center_y, center_x = np.unravel_index(np.argmax(masked_lung), masked_lung.shape)
+        else:
+            # Fallback to central 60% search region
+            margin_h, margin_w = int(H * 0.2), int(W * 0.2)
+            search_region = mid_slice[margin_h:H-margin_h, margin_w:W-margin_w]
+            y_rel, x_rel = np.unravel_index(np.argmax(search_region), search_region.shape)
+            center_y = y_rel + margin_h
+            center_x = x_rel + margin_w
 
         # Generate coordinate grid centered at nodule center
         yy, xx = np.ogrid[:H, :W]
         dist_from_center = np.sqrt((yy - center_y)**2 + (xx - center_x)**2)
 
-        # Approximate nodule radius (e.g. where intensity drops or within 6-18 voxels)
-        # Nodule core: radius <= 7 voxels
-        # Boundary shell: 7 < radius <= 14 voxels
-        # Peri-nodular background: 14 < radius <= 22 voxels
-        core_mask = dist_from_center <= 7
-        shell_mask = (dist_from_center > 7) & (dist_from_center <= 14)
-        peri_mask = (dist_from_center > 14) & (dist_from_center <= 22)
+        # Approximate nodule radius scaled dynamically to spatial grid
+        # Baseline 7 voxels for 128x128 (~5.5% of spatial width)
+        nominal_r = max(5, int(round(W * (7.0 / 128.0))))
+        core_mask = dist_from_center <= nominal_r
+        shell_mask = (dist_from_center > nominal_r) & (dist_from_center <= int(nominal_r * 2.0))
+        peri_mask = (dist_from_center > int(nominal_r * 2.0)) & (dist_from_center <= int(nominal_r * 3.14))
 
-        return (center_d, center_y, center_x), core_mask, shell_mask, peri_mask
+        return (center_d, int(center_y), int(center_x)), core_mask, shell_mask, peri_mask
 
     def verify_spiculation_and_margin(
         self,

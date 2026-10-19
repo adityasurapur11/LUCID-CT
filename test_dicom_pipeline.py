@@ -17,10 +17,16 @@ from src.adaptive_controller import AdaptiveVerificationController
 from src.report_generator import LungRADSClassifier, RadiologicalReportGenerator
 
 # 1. Load sample DICOM
-files = glob.glob(r"C:\Users\spide\Desktop\LUNG\data set\A\*.dcm")
-print(f"Found {len(files)} DICOM files in data set\\A.")
-test_file = files[0]
-print(f"Testing with file: {test_file}")
+workspace_dir = os.path.dirname(os.path.abspath(__file__))
+test_file = os.path.join(workspace_dir, "1.dcm")
+if not os.path.exists(test_file):
+    candidates = glob.glob(os.path.join(workspace_dir, "**", "*.dcm"), recursive=True)
+    if candidates:
+        test_file = candidates[0]
+    else:
+        raise FileNotFoundError("No .dcm files found for testing.")
+
+print(f"Testing with DICOM file: {test_file}")
 
 ds = pydicom.dcmread(test_file)
 raw_slice = ds.pixel_array.astype(np.float32)
@@ -29,6 +35,7 @@ intercept = float(getattr(ds, "RescaleIntercept", -1024))
 hu_slice = raw_slice * slope + intercept
 windowed_slice = apply_hu_window(hu_slice)
 
+print(f"Patient ID: {getattr(ds, 'PatientID', 'N/A')}, Study Date: {getattr(ds, 'StudyDate', 'N/A')}")
 print(f"Raw slice shape: {raw_slice.shape}, HU min/max: {hu_slice.min():.1f} / {hu_slice.max():.1f}")
 print(f"Windowed slice min/max: {windowed_slice.min():.2f} / {windowed_slice.max():.2f}")
 
@@ -41,8 +48,18 @@ print(f"Volume shape: {vol.shape}")
 
 # Model and scaler
 model = HybridLungCancerModel(in_channels=1)
+ckpt_path = os.path.join(workspace_dir, "models", "hybrid_lung_cancer_model.pt")
+temp_val = 1.2
+if os.path.exists(ckpt_path):
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+    if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
+        model.load_state_dict(ckpt["model_state_dict"])
+        temp_val = float(ckpt.get("temperature", 1.2))
+        print("Loaded trained model checkpoint (hybrid_lung_cancer_model.pt).")
+    elif isinstance(ckpt, dict):
+        model.load_state_dict(ckpt)
 model.eval()
-scaler = TemperatureScaler(temperature=1.2)
+scaler = TemperatureScaler(temperature=temp_val)
 
 # Test 1: Scan Quality
 quality_assessor = ScanQualityAssessor()

@@ -139,8 +139,17 @@ st.markdown("""
 def load_trained_model():
     """ Load or initialize model """
     model = HybridLungCancerModel(in_channels=1)
+    ckpt_path = os.path.join(os.path.dirname(__file__), "models", "hybrid_lung_cancer_model.pt")
+    temp_val = 1.2
+    if os.path.exists(ckpt_path):
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
+            model.load_state_dict(ckpt["model_state_dict"])
+            temp_val = float(ckpt.get("temperature", 1.2))
+        elif isinstance(ckpt, dict):
+            model.load_state_dict(ckpt)
     model.eval()
-    temp_scaler = TemperatureScaler(temperature=1.2)
+    temp_scaler = TemperatureScaler(temperature=temp_val)
     return model, temp_scaler
 
 
@@ -187,6 +196,8 @@ def main():
     current_volume = None
     true_label = None
     scan_info = ""
+    patient_id = "LUNG-CT-94821"
+    scan_date = time.strftime("%Y-%m-%d")
 
     if data_source == "Pre-loaded Synthetic LIDC Scans":
         scan_idx = st.sidebar.selectbox(
@@ -198,6 +209,8 @@ def main():
         current_volume = vol_tensor.squeeze(0).numpy()  # (D, H, W)
         true_label = int(true_label_val.item())
         scan_info = f"Synthetic LIDC CT Scan #{scan_idx+1}"
+        patient_id = f"SYNTH-PATIENT-{scan_idx+1:03d}"
+        scan_date = time.strftime("%Y-%m-%d")
     else:
         st.sidebar.markdown("**Upload DICOM or NIfTI Files**")
         uploaded_files = st.sidebar.file_uploader(
@@ -235,6 +248,14 @@ def main():
                             intercept = float(slices[0].RescaleIntercept)
                             vol = vol * slope + intercept
                         current_volume = apply_hu_window(vol)
+                        dcm_pid = getattr(slices[0], "PatientID", "ANONYMOUS_DICOM")
+                        dcm_date_raw = str(getattr(slices[0], "StudyDate", ""))
+                        if len(dcm_date_raw) == 8:
+                            dcm_date = f"{dcm_date_raw[:4]}-{dcm_date_raw[4:6]}-{dcm_date_raw[6:]}"
+                        else:
+                            dcm_date = time.strftime("%Y-%m-%d")
+                        patient_id = str(dcm_pid) if dcm_pid else "ANONYMOUS_DICOM"
+                        scan_date = dcm_date
                         scan_info = f"ZIP Archive ({len(dcm_paths)} DICOM Slices): {uploaded_files[0].name}"
                     else:
                         st.error("No .dcm files found inside the ZIP archive.")
@@ -263,7 +284,15 @@ def main():
                         vol = np.repeat(vol, max(1, 16 // vol.shape[0]), axis=0)
 
                     current_volume = apply_hu_window(vol)
-                    scan_info = f"Uploaded {len(uploaded_files)} DICOM slice(s)"
+                    dcm_pid = getattr(slices[0], "PatientID", "ANONYMOUS_DICOM")
+                    dcm_date_raw = str(getattr(slices[0], "StudyDate", ""))
+                    if len(dcm_date_raw) == 8:
+                        dcm_date = f"{dcm_date_raw[:4]}-{dcm_date_raw[4:6]}-{dcm_date_raw[6:]}"
+                    else:
+                        dcm_date = time.strftime("%Y-%m-%d")
+                    patient_id = str(dcm_pid) if dcm_pid else "ANONYMOUS_DICOM"
+                    scan_date = dcm_date
+                    scan_info = f"Uploaded DICOM: {uploaded_files[0].name} ({len(uploaded_files)} slice{'s' if len(uploaded_files)>1 else ''})"
                     shutil.rmtree(temp_dir, ignore_errors=True)
 
                 elif len(uploaded_files) == 1 and (uploaded_files[0].name.lower().endswith('.nii') or uploaded_files[0].name.lower().endswith('.gz')):
@@ -274,6 +303,7 @@ def main():
                     if current_volume.ndim == 3:
                         current_volume = apply_hu_window(current_volume)
                         scan_info = f"Uploaded File: {uploaded_files[0].name}"
+                        patient_id = f"NIFTI-{uploaded_files[0].name.split('.')[0]}"
                     else:
                         st.error("Uploaded NIfTI file must be a 3D volume.")
                 else:
@@ -753,8 +783,8 @@ def main():
             
             report_gen = RadiologicalReportGenerator()
             patient_info = {
-                "patient_id": "LUNG-CT-94821",
-                "scan_date": time.strftime("%Y-%m-%d"),
+                "patient_id": patient_id,
+                "scan_date": scan_date,
                 "scan_format": scan_info,
                 "slice_count": D
             }

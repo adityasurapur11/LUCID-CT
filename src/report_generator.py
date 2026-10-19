@@ -236,9 +236,11 @@ class RadiologicalReportGenerator:
             font=font(16, True),
             fill="#9FE3DB",
         )
+        raw_date = str(patient_info.get("scan_date", "N/A"))
+        clean_date = f"{raw_date[:4]}-{raw_date[4:6]}-{raw_date[6:]}" if len(raw_date) == 8 and raw_date.isdigit() else raw_date
         draw.text(
             (width - margin - 245, 77),
-            str(patient_info.get("scan_date", "N/A")),
+            clean_date,
             font=font(23, True),
             fill=colors["white"],
         )
@@ -248,7 +250,7 @@ class RadiologicalReportGenerator:
         draw.text((margin + 26, 248), "PATIENT & SCAN PROFILE", font=font(17, True), fill=colors["blue"])
         metadata = (
             ("Patient ID", str(patient_info.get("patient_id", "N/A"))),
-            ("Scan date", str(patient_info.get("scan_date", "N/A"))),
+            ("Scan date", clean_date),
             ("Scan format", str(patient_info.get("scan_format", "N/A"))),
             ("Slices", str(patient_info.get("slice_count", "N/A"))),
         )

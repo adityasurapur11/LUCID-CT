@@ -20,9 +20,21 @@ def main():
     print("[*] Executing 4-Way Comparative Ablation Benchmark (Experiments A, B, C, D)")
     print("=" * 70)
 
+    import os
+    import torch
     model = HybridLungCancerModel(in_channels=1)
+    ckpt_path = os.path.join(os.path.dirname(__file__), "models", "hybrid_lung_cancer_model.pt")
+    temp_val = 1.2
+    if os.path.exists(ckpt_path):
+        ckpt = torch.load(ckpt_path, map_location="cpu")
+        if isinstance(ckpt, dict) and "model_state_dict" in ckpt:
+            model.load_state_dict(ckpt["model_state_dict"])
+            temp_val = float(ckpt.get("temperature", 1.2))
+            print("Loaded trained model checkpoint (hybrid_lung_cancer_model.pt).")
+        elif isinstance(ckpt, dict):
+            model.load_state_dict(ckpt)
     model.eval()
-    scaler = TemperatureScaler(temperature=1.2)
+    scaler = TemperatureScaler(temperature=temp_val)
 
     suite = BenchmarkAblationSuite(model=model, temp_scaler=scaler)
     print("Generating evaluation cohort (Standard, Noisy/Shifted, and Contradictory Scans)...")

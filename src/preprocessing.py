@@ -41,25 +41,48 @@ def segment_lung_mask_slice(slice_2d: np.ndarray) -> np.ndarray:
         img_uint8 = (img * 255).astype(np.uint8)
         blurred = cv2.GaussianBlur(img_uint8, (5, 5), 0)
         _, thresh = cv2.threshold(blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        
+        # Clear external border-connected air (scanner background outside patient body)
+        h, w = thresh.shape
+        flood = thresh.copy()
+        mask_flood = np.zeros((h + 2, w + 2), np.uint8)
+        for x in [0, w - 1]:
+            for y in range(h):
+                if flood[y, x] == 255:
+                    cv2.floodFill(flood, mask_flood, (x, y), 0)
+        for y in [0, h - 1]:
+            for x in range(w):
+                if flood[y, x] == 255:
+                    cv2.floodFill(flood, mask_flood, (x, y), 0)
+                    
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-        closed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+        closed = cv2.morphologyEx(flood, cv2.MORPH_CLOSE, kernel, iterations=2)
     else:
         # Fallback using scipy ndimage
         blurred = ndimage.gaussian_filter(img, sigma=1.0)
         thresh_val = np.mean(blurred) * 0.7
         closed = (blurred < thresh_val).astype(np.uint8) * 255
+        # Clear border touching pixels
+        closed[0, :] = 0
+        closed[-1, :] = 0
+        closed[:, 0] = 0
+        closed[:, -1] = 0
 
     labels, num = ndimage.label(closed)
-    if num > 1:
+    if num > 0:
         sizes = ndimage.sum(closed, labels, range(1, num + 1))
         sorted_indices = np.argsort(sizes)[::-1]
         
-        mask = np.zeros_like(closed)
-        mask[labels == (sorted_indices[0] + 1)] = 1
-        if len(sorted_indices) > 1 and sizes[sorted_indices[1]] > 500:
-            mask[labels == (sorted_indices[1] + 1)] = 1
+        mask = np.zeros_like(closed, dtype=np.float32)
+        min_lung_size = max(50.0, 0.005 * slice_2d.size)
+        for idx in sorted_indices[:2]:
+            if sizes[idx] >= min_lung_size:
+                mask[labels == (idx + 1)] = 1.0
+        # If no component met min_lung_size but components exist, take top 1
+        if mask.sum() == 0 and sizes[sorted_indices[0]] > 20:
+            mask[labels == (sorted_indices[0] + 1)] = 1.0
     else:
-        mask = (closed > 0).astype(np.uint8)
+        mask = (closed > 0).astype(np.float32)
         
     return mask.astype(np.float32)
 
