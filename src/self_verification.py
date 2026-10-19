@@ -4,7 +4,8 @@ Cross-verifies primary deep learning predictions against radiological nodule cha
 detecting potential false positives, false negatives, and uncertainty anomalies.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+from src.adaptive_controller import AdaptiveVerificationController
 
 
 class SelfVerificationEngine:

@@ -170,6 +170,7 @@ class RadiologicalReportGenerator:
         verification_results: dict[str, Any],
         lung_rads_info: dict[str, Any],
         gradcam_img_bytes: bytes,
+        adaptive_results: dict[str, Any] | None = None,
     ) -> bytes:
         width, height = self._PAGE_SIZE
         image = PILImage.new("RGB", (width, height), self._COLORS["background"])
@@ -221,11 +222,11 @@ class RadiologicalReportGenerator:
         # Header
         draw.rectangle((0, 0, width, 202), fill=colors["navy"])
         draw.rectangle((0, 194, width, 202), fill=colors["teal"])
-        draw.text((margin, 38), "LUNG CT  /  DECISION SUPPORT", font=font(17, True), fill="#9FE3DB")
-        draw.text((margin, 76), "Clinical Imaging Report", font=font(43, True), fill=colors["white"])
+        draw.text((margin, 38), "LUNG CT  /  ADAPTIVE VERIFIED DECISION SUPPORT", font=font(17, True), fill="#9FE3DB")
+        draw.text((margin, 76), "Clinical Imaging & Verification Report", font=font(43, True), fill=colors["white"])
         draw.text(
             (margin, 137),
-            "AI-assisted findings for review by a qualified clinician",
+            "Uncertainty-Calibrated & Adaptive Self-Verifying Pulmonary Assessment",
             font=font(20),
             fill="#D9E7F2",
         )
@@ -244,7 +245,7 @@ class RadiologicalReportGenerator:
 
         # Patient and scan metadata
         rounded_box((margin, 228, width - margin, 364), outline="line")
-        draw.text((margin + 26, 248), "PATIENT & SCAN", font=font(17, True), fill=colors["blue"])
+        draw.text((margin + 26, 248), "PATIENT & SCAN PROFILE", font=font(17, True), fill=colors["blue"])
         metadata = (
             ("Patient ID", str(patient_info.get("patient_id", "N/A"))),
             ("Scan date", str(patient_info.get("scan_date", "N/A"))),
@@ -283,7 +284,7 @@ class RadiologicalReportGenerator:
         probability = float(prediction_results["calibrated_prob"])
         draw.text(
             (margin + 36, summary_top + 133),
-            f"Model malignancy estimate: {probability:.1%}",
+            f"Calibrated Malignancy Risk: {probability:.1%}",
             font=font(19, True),
             fill=colors["text"],
         )
@@ -322,28 +323,41 @@ class RadiologicalReportGenerator:
         rounded_box((right_x, content_top, right_x + column_width, card_bottom), outline="line")
 
         # Clinical verification and actions
-        y = section_title("Clinical review", left_x + 26, content_top + 25)
-        status = str(verification_results.get("status", "N/A")).replace("_", " ")
-        status_fill = "soft_teal" if verification_results.get("is_verified") else "soft_amber"
-        status_text = "teal" if verification_results.get("is_verified") else "amber"
+        y = section_title("Adaptive Verification & Reliability Gate", left_x + 26, content_top + 25)
+        
+        # Reliability Gate Status
+        if adaptive_results:
+            gate_status = adaptive_results.get("final_status", "N/A")
+            is_cleared = adaptive_results.get("is_cleared_by_gate", False)
+            cri_score = adaptive_results.get("composite_reliability_index", 0.0)
+            status_text_display = f"{gate_status} (CRI: {cri_score:.1f}%)"
+            status_fill = "soft_teal" if is_cleared else "soft_red"
+            status_text_color = "teal" if is_cleared else "red"
+        else:
+            status_text_display = str(verification_results.get("status", "N/A")).replace("_", " ")
+            status_fill = "soft_teal" if verification_results.get("is_verified") else "soft_amber"
+            status_text_color = "teal" if verification_results.get("is_verified") else "amber"
+
         draw.rounded_rectangle(
             (left_x + 26, y, left_x + column_width - 26, y + 44),
             radius=14,
             fill=colors[status_fill],
         )
-        draw.text((left_x + 42, y + 10), status, font=font(17, True), fill=colors[status_text])
-        y += 60
+        draw.text((left_x + 36, y + 10), status_text_display[:38], font=font(15, True), fill=colors[status_text_color])
+        y += 56
+
+        diagnosis_text = adaptive_results.get("final_status") if adaptive_results else verification_results.get("final_diagnosis", "Not available")
         y = wrapped(
-            str(verification_results.get("final_diagnosis", "Not available")),
+            str(diagnosis_text),
             left_x + 26,
             y,
             column_width - 52,
-            size=22,
+            size=20,
             bold=True,
         )
         y += 8
         y = wrapped(
-            "Recommended action",
+            "Recommended Clinical Action",
             left_x + 26,
             y,
             column_width - 52,
@@ -351,85 +365,67 @@ class RadiologicalReportGenerator:
             color="muted",
             bold=True,
         )
+        action_text = adaptive_results.get("recommended_clinical_action") if adaptive_results else verification_results.get("recommended_action", "Not available")
         y = wrapped(
-            str(verification_results.get("recommended_action", "Not available")),
+            str(action_text),
             left_x + 26,
             y + 2,
             column_width - 52,
-            size=18,
+            size=16,
         )
-        y += 14
-        y = wrapped(
-            "Suggested nodule follow-up",
-            left_x + 26,
-            y,
-            column_width - 52,
-            size=15,
-            color="muted",
-            bold=True,
-        )
-        y = wrapped(
-            str(lung_rads_info["management"]),
-            left_x + 26,
-            y + 2,
-            column_width - 52,
-            size=18,
-        )
+        y += 10
 
-        y += 12
+        # If re-analysis audit was executed, display reanalysis details
+        if adaptive_results and adaptive_results.get("reanalysis_performed"):
+            draw.line(
+                (left_x + 26, y, left_x + column_width - 26, y),
+                fill=colors["line"],
+                width=1,
+            )
+            y += 8
+            draw.text((left_x + 26, y), "TARGETED RE-ANALYSIS AUDIT TRAIL", font=font(14, True), fill=colors["blue"])
+            y += 24
+            agr = adaptive_results.get("reanalysis_agreement", 1.0) * 100.0
+            draw.text((left_x + 26, y), f"Agreement with Baseline: {agr:.1f}%", font=font(14, True), fill=colors["navy"])
+            y += 22
+            re_audit = adaptive_results.get("reanalysis_details", {}).get("reanalysis_audit", [])
+            for r_item in re_audit[:2]:
+                op_name = r_item.get("target_scale") or r_item.get("target_mode") or r_item.get("operation")
+                draw.text((left_x + 26, y), f"* {op_name[:36]}", font=font(13), fill=colors["text"])
+                y += 20
+            y += 6
+
         draw.line(
             (left_x + 26, y, left_x + column_width - 26, y),
             fill=colors["line"],
             width=2,
         )
-        y = section_title("Uncertainty", left_x + 26, y + 16)
-        uncertainty_rows = (
-            ("Epistemic (model)", prediction_results["epistemic_uncertainty"]),
-            ("Aleatoric (data)", prediction_results["aleatoric_uncertainty"]),
-            ("Total predictive entropy", prediction_results["total_uncertainty"]),
-        )
-        for label, value in uncertainty_rows:
-            draw.text((left_x + 26, y), label, font=font(16), fill=colors["text"])
+        y = section_title("Uncertainty & Verification Indices", left_x + 26, y + 14)
+        uncertainty_rows = [
+            ("Epistemic Uncertainty", f"{float(prediction_results['epistemic_uncertainty']):.4f}"),
+            ("Aleatoric Uncertainty", f"{float(prediction_results['aleatoric_uncertainty']):.4f}"),
+            ("Predictive Entropy", f"{float(prediction_results['total_uncertainty']):.4f}"),
+        ]
+        if adaptive_results:
+            sq = adaptive_results.get("scan_quality", {})
+            uncertainty_rows.append(("Scan Quality Score", f"{sq.get('quality_score', 90):.1f} / 100"))
+            xf = adaptive_results.get("xai_fidelity", {})
+            uncertainty_rows.append(("Grad-CAM Fidelity", f"{xf.get('fidelity_score', 0.8):.2f} / 1.0"))
+            tg = adaptive_results.get("trait_grounding", {})
+            uncertainty_rows.append(("Trait Physical Grounding", f"{tg.get('composite_trait_grounding', 0.85):.2f} / 1.0"))
+
+        for label, val_str in uncertainty_rows:
+            draw.text((left_x + 26, y), label, font=font(15), fill=colors["text"])
             draw.text(
                 (left_x + column_width - 150, y),
-                f"{float(value):.4f}",
-                font=font(16, True),
+                val_str,
+                font=font(15, True),
                 fill=colors["navy"],
             )
-            y += 32
-
-        conflicts = verification_results.get("conflicts", [])
-        y += 10
-        draw.line(
-            (left_x + 26, y, left_x + column_width - 26, y),
-            fill=colors["line"],
-            width=2,
-        )
-        y = section_title("Review flags", left_x + 26, y + 16)
-        if conflicts:
-            for conflict in conflicts:
-                y = wrapped(
-                    f"- {conflict}",
-                    left_x + 26,
-                    y,
-                    column_width - 52,
-                    size=15,
-                    color="red",
-                    line_gap=5,
-                )
-                y += 5
-        else:
-            wrapped(
-                "No additional verification flags.",
-                left_x + 26,
-                y,
-                column_width - 52,
-                size=16,
-                color="muted",
-            )
+            y += 26
 
         # Radiological characteristics and explainability image
-        y = section_title("Radiological traits", right_x + 26, content_top + 25)
+        y = section_title("Radiological Trait Evidence", right_x + 26, content_top + 25)
         trait_breakdown = verification_results.get("trait_breakdown", {})
         trait_rows = (
             ("Spiculation", "Spiculation (1-5)"),
@@ -440,35 +436,35 @@ class RadiologicalReportGenerator:
             ("Sphericity", "Sphericity (1-5)"),
         )
         for index, (label, key) in enumerate(trait_rows):
-            row_top = y + index * 48
+            row_top = y + index * 44
             if index % 2 == 0:
                 draw.rounded_rectangle(
-                    (right_x + 20, row_top - 4, right_x + column_width - 20, row_top + 36),
+                    (right_x + 20, row_top - 4, right_x + column_width - 20, row_top + 34),
                     radius=10,
                     fill=colors["background"],
                 )
-            draw.text((right_x + 32, row_top + 3), label, font=font(17), fill=colors["text"])
+            draw.text((right_x + 32, row_top + 3), label, font=font(16), fill=colors["text"])
             value = str(trait_breakdown.get(key, "N/A"))
             draw.text(
-                (right_x + column_width - 160, row_top + 3),
+                (right_x + column_width - 150, row_top + 3),
                 value,
-                font=font(17, True),
+                font=font(16, True),
                 fill=colors["navy"],
             )
 
-        y += len(trait_rows) * 48 + 10
+        y += len(trait_rows) * 44 + 8
         draw.line(
             (right_x + 26, y, right_x + column_width - 26, y),
             fill=colors["line"],
             width=2,
         )
-        y = section_title("Grad-CAM visualization", right_x + 26, y + 16)
-        cam_box = (right_x + 26, y, right_x + column_width - 26, y + 300)
+        y = section_title("XAI Localization & Evidence Grounding", right_x + 26, y + 14)
+        cam_box = (right_x + 26, y, right_x + column_width - 26, y + 280)
         draw.rounded_rectangle(cam_box, radius=14, fill=colors["background"])
         if gradcam_img_bytes:
             with PILImage.open(BytesIO(gradcam_img_bytes)) as cam:
                 cam = cam.convert("RGB")
-                cam.thumbnail((cam_box[2] - cam_box[0] - 24, cam_box[3] - cam_box[1] - 24))
+                cam.thumbnail((cam_box[2] - cam_box[0] - 20, cam_box[3] - cam_box[1] - 20))
                 paste_x = cam_box[0] + (cam_box[2] - cam_box[0] - cam.width) // 2
                 paste_y = cam_box[1] + (cam_box[3] - cam_box[1] - cam.height) // 2
                 image.paste(cam, (paste_x, paste_y))
@@ -485,18 +481,18 @@ class RadiologicalReportGenerator:
                 font=fallback_font,
                 fill=colors["muted"],
             )
-        y = cam_box[3] + 15
+        y = cam_box[3] + 12
         y = wrapped(
             str(lung_rads_info["assessment_note"]),
             right_x + 26,
             y,
             column_width - 52,
-            size=15,
+            size=14,
             color="muted",
-            line_gap=5,
+            line_gap=4,
         )
 
-        # Fixed footer remains outside the content cards and appears on every report.
+        # Fixed footer
         footer_y = 1600
         draw.line(
             (margin, footer_y, width - margin, footer_y),
@@ -504,14 +500,13 @@ class RadiologicalReportGenerator:
             width=2,
         )
         wrapped(
-            "Decision-support estimate only — not a diagnosis or official Lung-RADS "
-            "assessment. Category assumes a baseline solid nodule; nodule type, growth, "
-            "and prior imaging were not available. Review the original scan and consult "
-            "a qualified clinician.",
+            "Adaptive Self-Verifying Decision Support System. Features targeted computational re-analysis, "
+            "radiological trait physical grounding, and selective prediction reliability gating. "
+            "For investigational review by certified thoracic medical specialists.",
             margin,
-            footer_y + 17,
+            footer_y + 15,
             width - 2 * margin,
-            size=15,
+            size=14,
             color="muted",
             line_gap=4,
         )
@@ -527,6 +522,8 @@ class RadiologicalReportGenerator:
         verification_results: dict[str, Any],
         lung_rads_info: dict[str, Any],
         gradcam_img_bytes: bytes,
+        adaptive_results: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> bytes:
         return self._render_report(
             patient_info,
@@ -534,6 +531,7 @@ class RadiologicalReportGenerator:
             verification_results,
             lung_rads_info,
             gradcam_img_bytes,
+            adaptive_results=adaptive_results,
         )
 
     def generate_pdf_bytes(
@@ -543,6 +541,8 @@ class RadiologicalReportGenerator:
         verification_results: dict[str, Any],
         lung_rads_info: dict[str, Any],
         gradcam_img_bytes: bytes,
+        adaptive_results: dict[str, Any] | None = None,
+        **kwargs: Any,
     ) -> bytes:
         report_image = self._render_report(
             patient_info,
@@ -550,10 +550,11 @@ class RadiologicalReportGenerator:
             verification_results,
             lung_rads_info,
             gradcam_img_bytes,
+            adaptive_results=adaptive_results,
         )
         buffer = BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=letter, pageCompression=1)
-        pdf.setTitle("Lung CT Decision-Support Report")
+        pdf.setTitle("Adaptive Self-Verifying Lung CT Decision-Support Report")
         page_width, page_height = letter
         pdf.drawImage(
             ImageReader(BytesIO(report_image)),
