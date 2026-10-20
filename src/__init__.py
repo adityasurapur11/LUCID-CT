@@ -1,5 +1,5 @@
 """
-Adaptive Self-Verifying Deep Learning Framework for Early Lung Cancer Detection
+LUCID-CT: Lung Cancer Inference with Dynamic Self-Verification for 3D CT
 """
 
 from src.model import HybridLungCancerModel

@@ -88,7 +88,7 @@ def create_pdf(filename="Chat_Questions_And_Answers.pdf"):
 
     # Title Block
     story.append(Paragraph("Application Q&A & Technical Project Summary", title_style))
-    story.append(Paragraph("<b>Project:</b> Adaptive Self-Verifying Lung Cancer AI &nbsp;|&nbsp; <b>Live App:</b> <a href='https://112005.streamlit.app/'>https://112005.streamlit.app/</a>", subtitle_style))
+    story.append(Paragraph("<b>Project:</b> LUCID-CT (Adaptive Self-Verifying Lung Cancer AI) &nbsp;|&nbsp; <b>Live App:</b> <a href='https://112005.streamlit.app/'>https://112005.streamlit.app/</a>", subtitle_style))
     story.append(HRFlowable(width="100%", thickness=1.5, color=secondary_color, spaceAfter=15))
 
     # Helper function for Q&A Card

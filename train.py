@@ -1,5 +1,5 @@
 """
-Training Script for Adaptive Self-Verifying Hybrid CNN-Transformer Framework.
+LUCID-CT: Training Script for Adaptive Self-Verifying Hybrid CNN-Transformer Framework.
 Trains multi-task primary classifier and radiological trait heads, calibrates confidence,
 and saves model checkpoints.
 """

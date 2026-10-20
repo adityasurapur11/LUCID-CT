@@ -1,5 +1,5 @@
 """
-Adaptive Self-Verifying Deep Learning Framework for Early Lung Cancer Detection
+LUCID-CT: Lung Cancer Inference with Dynamic Self-Verification for 3D CT
 Streamlit Clinical Decision Support System & Research Prototype Interface.
 Incorporates:
 - Quality and Distribution-Shift Detection
@@ -43,7 +43,7 @@ from src.report_generator import LungRADSClassifier, RadiologicalReportGenerator
 
 # Streamlit Page Configuration
 st.set_page_config(
-    page_title="Adaptive Self-Verifying Lung Cancer AI",
+    page_title="LUCID-CT | Lung Cancer AI",
     page_icon="🫁",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -161,10 +161,9 @@ def get_synthetic_samples():
 
 
 def main():
-    st.title("🫁 Adaptive Self-Verifying Deep Learning Framework")
+    st.title("🫁 LUCID-CT: Adaptive Self-Verifying Framework")
     st.markdown(
-        "**Clinical Decision Support System with Quality Assessment, Trait Grounding, "
-        "Evidence-Grounded XAI, and Adaptive Re-Analysis**"
+        "**LU**ng **C**ancer **I**nference with **D**ynamic Self-Verification & Clinical Decision Support for 3D Thoracic CT"
     )
     
     # Architecture Pipeline Status Bar
@@ -816,7 +815,7 @@ def main():
             )
 
     st.markdown("---")
-    st.caption("Adaptive Self-Verifying Deep Learning Framework | Early Lung Cancer Detection System")
+    st.caption("LUCID-CT | Lung Cancer Inference with Dynamic Self-Verification | Early Detection System")
 
 
 if __name__ == "__main__":

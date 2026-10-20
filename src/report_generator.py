@@ -222,7 +222,7 @@ class RadiologicalReportGenerator:
         # Header
         draw.rectangle((0, 0, width, 202), fill=colors["navy"])
         draw.rectangle((0, 194, width, 202), fill=colors["teal"])
-        draw.text((margin, 38), "LUNG CT  /  ADAPTIVE VERIFIED DECISION SUPPORT", font=font(17, True), fill="#9FE3DB")
+        draw.text((margin, 38), "LUCID-CT  /  ADAPTIVE VERIFIED DECISION SUPPORT", font=font(17, True), fill="#9FE3DB")
         draw.text((margin, 76), "Clinical Imaging & Verification Report", font=font(43, True), fill=colors["white"])
         draw.text(
             (margin, 137),
@@ -502,7 +502,7 @@ class RadiologicalReportGenerator:
             width=2,
         )
         wrapped(
-            "Adaptive Self-Verifying Decision Support System. Features targeted computational re-analysis, "
+            "LUCID-CT: Adaptive Self-Verifying Decision Support System. Features targeted computational re-analysis, "
             "radiological trait physical grounding, and selective prediction reliability gating. "
             "For investigational review by certified thoracic medical specialists.",
             margin,
@@ -556,7 +556,7 @@ class RadiologicalReportGenerator:
         )
         buffer = BytesIO()
         pdf = canvas.Canvas(buffer, pagesize=letter, pageCompression=1)
-        pdf.setTitle("Adaptive Self-Verifying Lung CT Decision-Support Report")
+        pdf.setTitle("LUCID-CT - Lung CT Decision-Support Report")
         page_width, page_height = letter
         pdf.drawImage(
             ImageReader(BytesIO(report_image)),

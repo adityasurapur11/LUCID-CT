@@ -1,7 +1,8 @@
-# 🫁 Adaptive Self-Verifying Deep Learning Framework for Early Lung Cancer Detection
+# 🫁 LUCID-CT: Adaptive Self-Verifying Deep Learning Framework for Early Lung Cancer Detection
 
-> **An end-to-end AI Clinical Decision Support System (CDSS) for early detection of lung cancer from 3D CT scans.**
->
+> **LUCID-CT** (**LU**ng **C**ancer **I**nference with **D**ynamic Self-Verification for **CT**)
+> 
+> An end-to-end AI Clinical Decision Support System (CDSS) for early detection of lung cancer from 3D CT scans.
 > Incorporates Hybrid 3D CNN-Transformers, Confidence Calibration, Explainable AI (XAI), Trait-Specific Regional Physical Grounding, Scan-Quality & Distribution-Shift Assessment, Longitudinal Nodule Tracking, and an **Adaptive Verification Controller with Targeted Re-Analysis & Reliability Gating**.
 
 ---
