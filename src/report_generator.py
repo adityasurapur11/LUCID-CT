@@ -113,8 +113,10 @@ class RadiologicalReportGenerator:
 
     @staticmethod
     def _bundled_font_candidates(name: str) -> tuple[str, ...]:
-        """Locate fonts shipped inside installed packages (portable on any host)."""
-        candidates: list[str] = []
+        """Locate fonts that ship with the repository or installed packages (portable on any host)."""
+        candidates: list[str] = [
+            str(Path(__file__).resolve().parents[1] / "assets" / "fonts" / name),
+        ]
         try:
             import matplotlib
 
