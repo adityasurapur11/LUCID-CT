@@ -112,24 +112,53 @@ class RadiologicalReportGenerator:
     }
 
     @staticmethod
+    def _bundled_font_candidates(name: str) -> tuple[str, ...]:
+        """Locate fonts shipped inside installed packages (portable on any host)."""
+        candidates: list[str] = []
+        try:
+            import matplotlib
+
+            candidates.append(str(Path(matplotlib.get_data_path()) / "fonts" / "ttf" / name))
+        except Exception:
+            pass
+        return tuple(candidates)
+
+    @staticmethod
     def _font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
-        candidates = (
-            (
+        if bold:
+            system_candidates = (
                 r"C:\Windows\Fonts\arialbd.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
                 "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+                "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+                "/Library/Fonts/Arial Bold.ttf",
+                "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
             )
-            if bold
-            else (
+            bundled_name = "DejaVuSans-Bold.ttf"
+        else:
+            system_candidates = (
                 r"C:\Windows\Fonts\arial.ttf",
                 "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
                 "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/usr/share/fonts/TTF/DejaVuSans.ttf",
+                "/Library/Fonts/Arial.ttf",
+                "/System/Library/Fonts/Supplemental/Arial.ttf",
             )
-        )
+            bundled_name = "DejaVuSans.ttf"
+
+        candidates = (*system_candidates, *RadiologicalReportGenerator._bundled_font_candidates(bundled_name))
         for candidate in candidates:
             if Path(candidate).is_file():
-                return ImageFont.truetype(candidate, size=size)
-        return ImageFont.load_default()
+                try:
+                    return ImageFont.truetype(candidate, size=size)
+                except OSError:
+                    continue
+        try:
+            return ImageFont.load_default(size=size)
+        except TypeError:
+            return ImageFont.load_default()
 
     @staticmethod
     def _wrap_text(
