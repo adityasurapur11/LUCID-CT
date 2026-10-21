@@ -424,8 +424,15 @@ class RadiologicalReportGenerator:
             re_audit = adaptive_results.get("reanalysis_details", {}).get("reanalysis_audit", [])
             for r_item in re_audit[:2]:
                 op_name = r_item.get("target_scale") or r_item.get("target_mode") or r_item.get("operation")
-                draw.text((left_x + 26, y), f"* {op_name[:36]}", font=font(13), fill=colors["text"])
-                y += 20
+                y = wrapped(
+                    f"* {op_name}",
+                    left_x + 26,
+                    y,
+                    column_width - 52,
+                    size=13,
+                    line_gap=3,
+                )
+                y += 4
             y += 6
 
         draw.line(
