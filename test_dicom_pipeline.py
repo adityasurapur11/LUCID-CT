@@ -157,6 +157,6 @@ pdf_bytes = report_gen.generate_pdf_bytes(
 )
 print(f"\n--- REPORT ---")
 print(f"Generated PDF bytes: {len(pdf_bytes)} bytes")
-with open(r"C:\Users\spide\Desktop\LUNG\scratch_test_report.pdf", "wb") as f:
+with open(os.path.join(workspace_dir, "scratch_test_report.pdf"), "wb") as f:
     f.write(pdf_bytes)
 print("Saved scratch_test_report.pdf successfully!")

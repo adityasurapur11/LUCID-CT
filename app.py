@@ -27,7 +27,7 @@ import cv2
 import matplotlib.pyplot as plt
 
 from src.preprocessing import apply_hu_window, segment_lung_mask_slice, extract_roi
-from src.dataset import SyntheticLIDCDataset, load_dicom_series, load_nifti_file
+from src.dataset import load_dicom_series, load_nifti_file
 from src.model import HybridLungCancerModel
 from src.uncertainty_calibration import estimate_mc_uncertainty, TemperatureScaler
 from src.xai import GradCAM3D, overlay_heatmap_on_slice
@@ -131,6 +131,82 @@ st.markdown("""
         padding: 12px;
         margin-bottom: 10px;
     }
+    /* Centered Medical CT Upload Dropzone */
+    .upload-center-wrapper {
+        background: linear-gradient(145deg, rgba(30, 41, 59, 0.7) 0%, rgba(15, 23, 42, 0.9) 100%);
+        border: 2px dashed rgba(59, 130, 246, 0.45);
+        border-radius: 18px;
+        padding: 28px 24px 22px 24px;
+        text-align: center;
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 0 25px rgba(59, 130, 246, 0.1);
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+    }
+    .upload-center-wrapper:hover {
+        border-color: rgba(96, 165, 250, 0.85);
+        box-shadow: 0 14px 40px -5px rgba(0, 0, 0, 0.5), 0 0 35px rgba(59, 130, 246, 0.2);
+    }
+    .upload-badge-pill {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.25) 0%, rgba(37, 99, 235, 0.25) 100%);
+        border: 1px solid rgba(96, 165, 250, 0.4);
+        color: #93c5fd;
+        padding: 5px 16px;
+        border-radius: 14px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        display: inline-block;
+        margin-bottom: 12px;
+    }
+    .format-pill {
+        display: inline-block;
+        background: rgba(30, 41, 59, 0.85);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        color: #cbd5e1;
+        padding: 5px 14px;
+        border-radius: 14px;
+        font-size: 0.84rem;
+        font-weight: 500;
+        margin: 3px 5px;
+    }
+    .format-pill strong {
+        color: #60a5fa;
+    }
+    .feature-card {
+        background: rgba(30, 41, 59, 0.55);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 14px;
+        padding: 22px 20px;
+        height: 100%;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .feature-card:hover {
+        border-color: rgba(59, 130, 246, 0.45);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    }
+    .active-scan-box {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(15, 23, 42, 0.85) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        border-radius: 14px;
+        padding: 18px 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.35);
+    }
+    [data-testid="stFileUploader"] {
+        width: 100%;
+    }
+    [data-testid="stFileUploader"] section {
+        background: rgba(15, 23, 42, 0.65) !important;
+        border: 1px dashed rgba(148, 163, 184, 0.3) !important;
+        border-radius: 12px !important;
+        padding: 20px !important;
+    }
+    [data-testid="stFileUploader"] section:hover {
+        border-color: rgba(96, 165, 250, 0.7) !important;
+        background: rgba(30, 41, 59, 0.55) !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -153,11 +229,7 @@ def load_trained_model():
     return model, temp_scaler
 
 
-@st.cache_data
-def get_synthetic_samples():
-    """ Cache synthetic scans """
-    dataset = SyntheticLIDCDataset(num_samples=10, depth=32, height=128, width=128, seed=101)
-    return dataset
+
 
 
 def main():
@@ -165,17 +237,9 @@ def main():
     st.markdown(
         "**LU**ng **C**ancer **I**nference with **D**ynamic Self-Verification & Clinical Decision Support for 3D Thoracic CT"
     )
-    
-    # Architecture Pipeline Status Bar
-    st.markdown("""
-    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 12px 20px; margin-bottom: 20px;">
-        <span style="color: #60a5fa; font-weight: 600;">ENHANCED PIPELINE:</span>
-        <span style="color: #94a3b8;"> Input CT Scan ➔ Quality & Distribution-Shift Check ➔ 3D CNN-Transformer ➔ Trait Grounding & XAI Verification ➔ Adaptive Controller (Targeted Re-Analysis) ➔ Reliability Gate</span>
-    </div>
-    """, unsafe_allow_html=True)
+
 
     model, temp_scaler = load_trained_model()
-    synthetic_ds = get_synthetic_samples()
     
     # Initialize Core Engines
     quality_assessor = ScanQualityAssessor()
@@ -185,44 +249,66 @@ def main():
     longitudinal_tracker = LongitudinalNoduleTracker()
     rule_verifier = SelfVerificationEngine()
 
-    # Sidebar Options
-    st.sidebar.header("🔬 Input CT Scan Selection")
-    data_source = st.sidebar.radio(
-        "Select CT Data Input:",
-        ["Pre-loaded Synthetic LIDC Scans", "Upload DICOM / NIfTI Scan"]
-    )
+    # Sidebar Options & Settings
+    st.sidebar.markdown("### 🫁 LUCID-CT System")
+    st.sidebar.caption("Clinical Decision Support AI for 3D Thoracic CT")
+    st.sidebar.markdown("---")
+
+    st.sidebar.header("⚙️ Controller & XAI Settings")
+    mc_samples = st.sidebar.slider("Monte Carlo Dropout Samples (N):", min_value=5, max_value=30, value=15, step=5)
+    enable_calibration = st.sidebar.checkbox("Enable Temperature Calibration", value=True)
+    heatmap_alpha = st.sidebar.slider("Grad-CAM Overlay Alpha:", min_value=0.1, max_value=0.9, value=0.45, step=0.05)
+    
+    st.sidebar.markdown("---")
+    st.sidebar.header("🛡️ Reliability Gate Criteria")
+    cri_threshold = st.sidebar.slider("Composite Reliability Threshold (CRI %):", min_value=60, max_value=90, value=75, step=5)
+    adaptive_controller.RELIABILITY_THRESHOLD = float(cri_threshold)
+
+
 
     current_volume = None
-    true_label = None
     scan_info = ""
-    patient_id = "LUNG-CT-94821"
+    patient_id = "ANONYMOUS_PATIENT"
     scan_date = time.strftime("%Y-%m-%d")
 
-    if data_source == "Pre-loaded Synthetic LIDC Scans":
-        scan_idx = st.sidebar.selectbox(
-            "Select Sample Patient CT Scan:",
-            range(len(synthetic_ds)),
-            format_func=lambda i: f"Patient #{i+1} ({'Malignant Nodule' if i%2==1 else 'Benign Nodule'})"
-        )
-        vol_tensor, true_label_val, meta_vec = synthetic_ds[scan_idx]
-        current_volume = vol_tensor.squeeze(0).numpy()  # (D, H, W)
-        true_label = int(true_label_val.item())
-        scan_info = f"Synthetic LIDC CT Scan #{scan_idx+1}"
-        patient_id = f"SYNTH-PATIENT-{scan_idx+1:03d}"
-        scan_date = time.strftime("%Y-%m-%d")
-    else:
-        st.sidebar.markdown("**Upload DICOM or NIfTI Files**")
-        uploaded_files = st.sidebar.file_uploader(
+    # ----------------------------------------------------
+    # Centered CT Scan Upload Section (Middle of Page)
+    # ----------------------------------------------------
+    col_l, col_center, col_r = st.columns([0.8, 3.4, 0.8])
+    with col_center:
+        st.markdown("""
+        <div class="upload-center-wrapper">
+            <span class="upload-badge-pill">Clinical Thoracic Ingestion</span>
+            <div style="font-size: 2.2rem; margin: 4px 0 6px 0;">🩻</div>
+            <h3 style="margin: 0 0 6px 0; color: #f8fafc; font-weight: 700;">Upload 3D Thoracic CT Scan</h3>
+            <p style="margin: 0 0 14px 0; color: #94a3b8; font-size: 0.92rem; line-height: 1.5;">
+                Select or drag-and-drop raw DICOM slices, a complete zipped series, or a 3D NIfTI volume to launch automated 
+                quality assessment, 3D CNN-Transformer diagnostics, and adaptive verification.
+            </p>
+            <div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+                <span class="format-pill">📄 <strong>DICOM Slices</strong> (.dcm)</span>
+                <span class="format-pill">📦 <strong>Zipped Series</strong> (.zip)</span>
+                <span class="format-pill">🧠 <strong>3D NIfTI</strong> (.nii / .nii.gz)</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        uploaded_files = st.file_uploader(
             "Upload DICOM (.dcm), ZIP folder (.zip), or NIfTI (.nii, .nii.gz)",
             type=["dcm", "zip", "nii", "gz"],
-            accept_multiple_files=True
+            accept_multiple_files=True,
+            help="Upload raw DICOM slices (.dcm), a ZIP folder containing .dcm files, or a 3D NIfTI file (.nii, .nii.gz). Max 200MB per file.",
+            label_visibility="collapsed"
         )
+
         if uploaded_files:
             try:
                 import zipfile
                 import tempfile
                 import shutil
+                import pydicom
 
+                # 1. Zipped DICOM archive
                 if len(uploaded_files) == 1 and uploaded_files[0].name.lower().endswith('.zip'):
                     temp_dir = tempfile.mkdtemp()
                     zip_path = os.path.join(temp_dir, "upload.zip")
@@ -238,14 +324,12 @@ def main():
                                 dcm_paths.append(os.path.join(root, file))
                     
                     if dcm_paths:
-                        import pydicom
                         slices = [pydicom.dcmread(fp) for fp in dcm_paths]
-                        slices.sort(key=lambda s: float(s.ImagePositionPatient[2]) if hasattr(s, 'ImagePositionPatient') else 0)
+                        slices.sort(key=lambda s: float(s.ImagePositionPatient[2]) if hasattr(s, 'ImagePositionPatient') and len(s.ImagePositionPatient) >= 3 else (float(s.SliceLocation) if hasattr(s, 'SliceLocation') else float(getattr(s, 'InstanceNumber', 0))))
                         vol = np.stack([s.pixel_array for s in slices], axis=0).astype(np.float32)
-                        if hasattr(slices[0], 'RescaleSlope') and hasattr(slices[0], 'RescaleIntercept'):
-                            slope = float(slices[0].RescaleSlope)
-                            intercept = float(slices[0].RescaleIntercept)
-                            vol = vol * slope + intercept
+                        slope = float(getattr(slices[0], 'RescaleSlope', 1.0))
+                        intercept = float(getattr(slices[0], 'RescaleIntercept', 0.0))
+                        vol = vol * slope + intercept
                         current_volume = apply_hu_window(vol)
                         dcm_pid = getattr(slices[0], "PatientID", "ANONYMOUS_DICOM")
                         dcm_date_raw = str(getattr(slices[0], "StudyDate", ""))
@@ -257,25 +341,25 @@ def main():
                         scan_date = dcm_date
                         scan_info = f"ZIP Archive ({len(dcm_paths)} DICOM Slices): {uploaded_files[0].name}"
                     else:
-                        st.error("No .dcm files found inside the ZIP archive.")
+                        st.error("No .dcm files found inside the uploaded ZIP archive.")
                     shutil.rmtree(temp_dir, ignore_errors=True)
 
-                elif all(f.name.lower().endswith('.dcm') for f in uploaded_files):
-                    import pydicom
+                # 2. Direct DICOM slice(s)
+                elif any(f.name.lower().endswith('.dcm') for f in uploaded_files):
+                    dcm_files = [f for f in uploaded_files if f.name.lower().endswith('.dcm')]
                     temp_dir = tempfile.mkdtemp()
                     slices = []
-                    for f in uploaded_files:
+                    for f in dcm_files:
                         fp = os.path.join(temp_dir, f.name)
                         with open(fp, "wb") as out_f:
                             out_f.write(f.getbuffer())
                         slices.append(pydicom.dcmread(fp))
                     
-                    slices.sort(key=lambda s: float(s.ImagePositionPatient[2]) if hasattr(s, 'ImagePositionPatient') else 0)
+                    slices.sort(key=lambda s: float(s.ImagePositionPatient[2]) if hasattr(s, 'ImagePositionPatient') and len(s.ImagePositionPatient) >= 3 else (float(s.SliceLocation) if hasattr(s, 'SliceLocation') else float(getattr(s, 'InstanceNumber', 0))))
                     vol = np.stack([s.pixel_array for s in slices], axis=0).astype(np.float32)
-                    if hasattr(slices[0], 'RescaleSlope') and hasattr(slices[0], 'RescaleIntercept'):
-                        slope = float(slices[0].RescaleSlope)
-                        intercept = float(slices[0].RescaleIntercept)
-                        vol = vol * slope + intercept
+                    slope = float(getattr(slices[0], 'RescaleSlope', 1.0))
+                    intercept = float(getattr(slices[0], 'RescaleIntercept', 0.0))
+                    vol = vol * slope + intercept
                     
                     if vol.ndim == 2:
                         vol = np.tile(vol, (16, 1, 1))
@@ -291,38 +375,86 @@ def main():
                         dcm_date = time.strftime("%Y-%m-%d")
                     patient_id = str(dcm_pid) if dcm_pid else "ANONYMOUS_DICOM"
                     scan_date = dcm_date
-                    scan_info = f"Uploaded DICOM: {uploaded_files[0].name} ({len(uploaded_files)} slice{'s' if len(uploaded_files)>1 else ''})"
+                    scan_info = f"Uploaded DICOM: {dcm_files[0].name} ({len(dcm_files)} slice{'s' if len(dcm_files)>1 else ''})"
                     shutil.rmtree(temp_dir, ignore_errors=True)
 
+                # 3. NIfTI volume (.nii or .nii.gz)
                 elif len(uploaded_files) == 1 and (uploaded_files[0].name.lower().endswith('.nii') or uploaded_files[0].name.lower().endswith('.gz')):
-                    temp_path = "temp_upload.nii.gz"
-                    with open(temp_path, "wb") as f:
-                        f.write(uploaded_files[0].getbuffer())
-                    current_volume = load_nifti_file(temp_path)
-                    if current_volume.ndim == 3:
-                        current_volume = apply_hu_window(current_volume)
-                        scan_info = f"Uploaded File: {uploaded_files[0].name}"
-                        patient_id = f"NIFTI-{uploaded_files[0].name.split('.')[0]}"
-                    else:
-                        st.error("Uploaded NIfTI file must be a 3D volume.")
+                    with tempfile.NamedTemporaryFile(suffix=".nii.gz", delete=False) as tmp_file:
+                        tmp_file.write(uploaded_files[0].getbuffer())
+                        temp_path = tmp_file.name
+                    try:
+                        current_volume = load_nifti_file(temp_path)
+                        if current_volume.ndim == 3:
+                            current_volume = apply_hu_window(current_volume)
+                            scan_info = f"Uploaded NIfTI: {uploaded_files[0].name}"
+                            patient_id = f"NIFTI-{uploaded_files[0].name.split('.')[0]}"
+                        else:
+                            st.error("Uploaded NIfTI file must be a 3D volume (D, H, W).")
+                            current_volume = None
+                    finally:
+                        if os.path.exists(temp_path):
+                            os.remove(temp_path)
                 else:
                     st.warning("Please upload .dcm files, a .zip containing .dcm files, or a .nii/.nii.gz file.")
             except Exception as e:
                 st.error(f"Error processing uploaded files: {e}")
 
-    st.sidebar.markdown("---")
-    st.sidebar.header("⚙️ Controller & XAI Settings")
-    mc_samples = st.sidebar.slider("Monte Carlo Dropout Samples (N):", min_value=5, max_value=30, value=15, step=5)
-    enable_calibration = st.sidebar.checkbox("Enable Temperature Calibration", value=True)
-    heatmap_alpha = st.sidebar.slider("Grad-CAM Overlay Alpha:", min_value=0.1, max_value=0.9, value=0.45, step=0.05)
-    
-    st.sidebar.markdown("---")
-    st.sidebar.header("🛡️ Reliability Gate Criteria")
-    cri_threshold = st.sidebar.slider("Composite Reliability Threshold (CRI %):", min_value=60, max_value=90, value=75, step=5)
-    adaptive_controller.RELIABILITY_THRESHOLD = float(cri_threshold)
+        # Active Scan Summary Pill if loaded
+        if current_volume is not None:
+            D_loaded, H_loaded, W_loaded = current_volume.shape
+            st.markdown(f"""
+            <div class="active-scan-box">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(16, 185, 129, 0.25); padding-bottom: 8px;">
+                    <span class="badge-verified">✓ CT Scan Loaded & Preprocessed</span>
+                    <span style="color: #6ee7b7; font-size: 0.85rem; font-weight: 500;">Ready for Inference</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: left;">
+                    <div><span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase; font-weight: 600;">Patient ID</span><br/><strong style="color: #f8fafc; font-size: 0.92rem;">{patient_id}</strong></div>
+                    <div><span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase; font-weight: 600;">Study Date</span><br/><strong style="color: #f8fafc; font-size: 0.92rem;">{scan_date}</strong></div>
+                    <div><span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase; font-weight: 600;">Volume Shape</span><br/><strong style="color: #60a5fa; font-size: 0.92rem;">{D_loaded} × {H_loaded} × {W_loaded}</strong></div>
+                    <div><span style="color: #94a3b8; font-size: 0.72rem; text-transform: uppercase; font-weight: 600;">Scan Source</span><br/><strong style="color: #f8fafc; font-size: 0.82rem; word-break: break-all;">{scan_info}</strong></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.sidebar.success(f"🟢 **Active Scan:** `{patient_id}` ({D_loaded} slices)")
+        else:
+            st.sidebar.info("⚪ **Status:** Awaiting Scan Upload")
 
     if current_volume is None:
-        st.info("Please select or upload a CT scan to initiate AI diagnosis.")
+        st.markdown("<br/>", unsafe_allow_html=True)
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            st.markdown("""
+            <div class="feature-card">
+                <div style="font-size: 1.8rem; margin-bottom: 8px;">🩻</div>
+                <h4 style="color: #60a5fa; margin: 0 0 8px 0;">1. Multi-Format 3D Ingestion</h4>
+                <p style="color: #94a3b8; font-size: 0.88rem; line-height: 1.45; margin: 0;">
+                    Accepts raw axial DICOM series, zipped exams, or NIfTI volumes. Auto-extracts voxel spacing and applies calibrated lung windowing (-1000 to +400 HU).
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_f2:
+            st.markdown("""
+            <div class="feature-card">
+                <div style="font-size: 1.8rem; margin-bottom: 8px;">🧠</div>
+                <h4 style="color: #60a5fa; margin: 0 0 8px 0;">2. Adaptive Self-Verification</h4>
+                <p style="color: #94a3b8; font-size: 0.88rem; line-height: 1.45; margin: 0;">
+                    Quality & distribution-shift screening, 3D CNN-Transformer multi-task inference, Monte Carlo dropout uncertainty, and 6 LIDC physical trait grounding.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+        with col_f3:
+            st.markdown("""
+            <div class="feature-card">
+                <div style="font-size: 1.8rem; margin-bottom: 8px;">🛡️</div>
+                <h4 style="color: #60a5fa; margin: 0 0 8px 0;">3. Autonomous Reliability Gate</h4>
+                <p style="color: #94a3b8; font-size: 0.88rem; line-height: 1.45; margin: 0;">
+                    Detects epistemic uncertainty & trait contradictions. Triggers targeted multi-scale re-analysis and generates automated Lung-RADS™ clinical reports.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
         return
 
     # Process Volume Input for Model
@@ -574,13 +706,36 @@ def main():
         st.markdown("Inspects regional physical CT features to ensure predicted traits are physically substantiated.")
         
         tg_scores = trait_grounding["individual_grounding_scores"]
-        t_cols = st.columns(6)
         trait_names = ["Spiculation", "Margin", "Calcification", "Subtlety", "Sphericity", "Lobulation"]
-        for idx, t_name in enumerate(trait_names):
-            with t_cols[idx]:
-                score = tg_scores.get(t_name, 1.0)
-                pred_val = adaptive_results["final_traits"][idx]
-                st.metric(f"{t_name} ({pred_val:.1f})", f"{score*100:.0f}% Grounded")
+
+        # Build trait cards as HTML to avoid st.metric truncation in 6 columns
+        trait_icons = ["🔺", "〰️", "⚪", "🔍", "⭕", "🌀"]
+        cards_html = '<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px;">'
+        for i, t_name in enumerate(trait_names):
+            score = tg_scores.get(t_name, 1.0)
+            pred_val = adaptive_results["final_traits"][i]
+            pct = score * 100
+            bar_color = "#10b981" if pct >= 70 else ("#f59e0b" if pct >= 40 else "#ef4444")
+            cards_html += f"""
+            <div style="background: rgba(30,41,59,0.7); border: 1px solid rgba(255,255,255,0.08);
+                        border-radius: 12px; padding: 14px 16px;">
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase;
+                            font-weight: 600; letter-spacing: 0.04em; margin-bottom: 4px;">
+                    {trait_icons[i]} {t_name}
+                </div>
+                <div style="font-size: 1.4rem; font-weight: 700; color: {bar_color}; margin-bottom: 6px;">
+                    {pct:.0f}% Grounded
+                </div>
+                <div style="font-size: 0.78rem; color: #64748b; margin-bottom: 6px;">
+                    Predicted value: <strong style="color:#cbd5e1">{pred_val:.1f} / 5</strong>
+                </div>
+                <div style="background: rgba(255,255,255,0.07); border-radius: 6px; height: 5px; overflow: hidden;">
+                    <div style="width: {pct:.0f}%; height: 100%; background: {bar_color};
+                                border-radius: 6px; transition: width 0.4s ease;"></div>
+                </div>
+            </div>"""
+        cards_html += '</div>'
+        st.markdown(cards_html, unsafe_allow_html=True)
 
         if trait_grounding["trait_conflicts"]:
             st.warning("⚠️ **Detected Physical Trait Grounding Conflicts:**")

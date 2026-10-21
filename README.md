@@ -280,7 +280,7 @@ The application generates **PDF and PNG Clinical Decision-Support Reports** cont
 
 | Control | Description |
 |---|---|
-| **CT Data Input** | Select Pre-loaded Synthetic LIDC or Upload DICOM / NIfTI |
+| **CT Data Ingestion** | Upload DICOM series (.dcm), zipped studies (.zip), or NIfTI volumes (.nii, .nii.gz) in the centered ingestion card |
 | **Monte Carlo Dropout Samples (N)** | Stochastic forward passes for epistemic uncertainty estimation (default: 15) |
 | **Enable Temperature Calibration** | Toggle post-hoc temperature scaling for probability calibration |
 | **Grad-CAM Overlay Alpha** | Transparency of the Grad-CAM heatmap overlay on CT slices (default: 0.45) |
