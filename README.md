@@ -93,6 +93,7 @@ Provides validation metrics across four distinct experimental setups:
 - **Experiment C**: Baseline Model + Adaptive Re-Analysis Controller
 - **Experiment D**: Full System (Scan Quality + Trait Grounding + XAI Fidelity + Adaptive Re-Analysis + Reliability Gating)
 
+
 ---
 
 ## 📁 Repository Structure
@@ -121,7 +122,7 @@ LUNG/
 │   └── report_generator.py     # Lung-RADS estimate and verified clinical PDF/PNG report
 └── tests/
     ├── test_model.py                   # Pytest suite for baseline model & preprocessing
-    └── test_adaptive_verification.py   # Comprehensive Pytest suite for all new modules
+    └── test_adaptive_verification.py   # Comprehensive Pytest suite for all modules
 ```
 
 ---
@@ -137,7 +138,7 @@ pip install -r requirements.txt
 ### 2. Run Unit Tests
 
 ```bash
-python -m pytest tests/test_adaptive_verification.py tests/test_model.py -v
+python -m pytest tests/ -v
 ```
 
 ### 3. Test Pipeline Directly with Sample DICOM (`1.dcm`)
@@ -223,20 +224,7 @@ Results obtained by testing and uploading the real clinical DICOM CT scan (`1.dc
 | **Trajectory Assessment** | RAPID_GROWTH | High Risk / Aggressive Malignancy Progression |
 | **Clinical Recommendation** | Urgent Biopsy / PET-CT | Immediate multidisciplinary oncology referral |
 
-### Tab 6 — 4-Way Comparative Benchmark (Live Run)
-
-| Metric | Exp A (Baseline) | Exp B (Rule-Based) | Exp C (Adaptive) | Exp D (Full System) |
-|---|---|---|---|---|
-| **AUROC** | 0.990 | 0.990 | 0.910 | **0.990** |
-| **Specificity** | 1.000 | 1.000 | 1.000 | **1.000** |
-| **Calibration Error (ECE)** | 0.0631 | 0.0631 | 0.0634 | **0.0619** |
-| **Brier Score** | 0.2528 | 0.2528 | 0.2532 | **0.2523** |
-| **Selective Error Rate (%)** | 50.0% | 0.0% | 50.0% | **0.0%** |
-| **Referral / Abstain Rate (%)** | 0.0% | 75.0% | 0.0% | **Adaptive (Gate)** |
-| **Verification Recall** | 0.0% | 100.0% | 0.0% | **100.0%** |
-| **Inference Latency** | 2.5 ms | 2.5 ms | 5.2 ms | 53.3 ms |
-
-### Tab 7 — Lung-RADS Estimate & Clinical Report
+### Tab 6 — Lung-RADS Estimate & Clinical Report
 
 | Metric | Value |
 |---|---|
@@ -247,6 +235,7 @@ Results obtained by testing and uploading the real clinical DICOM CT scan (`1.dc
 | **Fleischner Management Guideline** | Follow-up low-dose CT in 3 months; consider PET/CT when clinically appropriate |
 | **Exported Artifacts** | `Lung_RADS_Report_Lung_Dx-B0041.pdf` & `Lung_RADS_Report_Lung_Dx-B0041.png` |
 | **Generated Report Size** | ~333 KB (PDF) / ~256 KB (PNG) with full audit log & Grad-CAM snapshot |
+
 
 ---
 
@@ -284,6 +273,7 @@ The application generates **PDF and PNG Clinical Decision-Support Reports** cont
 | **Monte Carlo Dropout Samples (N)** | Stochastic forward passes for epistemic uncertainty estimation (default: 15) |
 | **Enable Temperature Calibration** | Toggle post-hoc temperature scaling for probability calibration |
 | **Grad-CAM Overlay Alpha** | Transparency of the Grad-CAM heatmap overlay on CT slices (default: 0.45) |
+| **Composite Reliability Threshold (CRI %)** | Minimum reliability index for autonomous gate clearance without clinician escalation (default: 75%) |
 
 ---
 

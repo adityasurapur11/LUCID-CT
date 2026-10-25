@@ -254,6 +254,11 @@ def main():
     st.sidebar.caption("Clinical Decision Support AI for 3D Thoracic CT")
     st.sidebar.markdown("---")
 
+
+    st.sidebar.markdown("---")
+    st.sidebar.caption("📌 **Navigation:** Once a CT scan is loaded and analyzed, explore patient diagnostics, XAI, and reports across Tabs 1–6.")
+    st.sidebar.markdown("---")
+
     st.sidebar.header("⚙️ Controller & XAI Settings")
     mc_samples = st.sidebar.slider("Monte Carlo Dropout Samples (N):", min_value=5, max_value=30, value=15, step=5)
     enable_calibration = st.sidebar.checkbox("Enable Temperature Calibration", value=True)
@@ -455,6 +460,7 @@ def main():
             </div>
             """, unsafe_allow_html=True)
 
+
         return
 
     # Process Volume Input for Model
@@ -516,15 +522,14 @@ def main():
             nodule_radius_mm=5.0
         )
 
-    # Main Clinical Dashboard Tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    # Main Clinical Dashboard Tabs (Results & Verification Workflow)
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🩻 CT Scan & Quality Assessment",
         "🔥 Evidence-Grounded XAI (Grad-CAM)",
         "🛡️ Adaptive Controller & Re-Analysis",
         "📊 Uncertainty & Calibration",
         "📈 Longitudinal Growth (VDT)",
-        "🔬 Comparative Benchmark (A/B/C/D)",
-        "📄 Lung-RADS™ & PDF Report"
+        "📄 Lung-RADS™ & Decision-Support Report"
     ])
 
     # ----------------------------------------------------
@@ -853,66 +858,9 @@ def main():
             plt.close(fig_t2)
 
     # ----------------------------------------------------
-    # TAB 6: Comparative Benchmark (A/B/C/D)
+    # TAB 6: Lung-RADS & Report Export
     # ----------------------------------------------------
     with tab6:
-        st.subheader("🔬 4-Way Comparative Benchmark & Ablation Evaluation")
-        st.markdown(
-            "Executes the quantitative comparison matrix recommended for validation: "
-            "**Exp A (Baseline)** vs **Exp B (Rule-based)** vs **Exp C (Adaptive Re-analysis)** vs **Exp D (Full System)**."
-        )
-
-        if st.button("🚀 Run Live 4-Way Comparative Benchmark Evaluation (20 Scans)"):
-            with st.spinner("Running Benchmark Suite across Standard, Shifted, and Contradictory Cohort..."):
-                suite = BenchmarkAblationSuite(model=model, temp_scaler=temp_scaler)
-                bench_res = suite.run_benchmark()
-                st.session_state["benchmark_results"] = bench_res
-
-        if "benchmark_results" in st.session_state:
-            bench_res = st.session_state["benchmark_results"]
-            table = bench_res["comparison_table"]
-
-            st.markdown("### Evaluation Results Matrix")
-            import pandas as pd
-            df_rows = []
-            metrics_display = [
-                ("AUROC", "AUROC"),
-                ("Sensitivity", "Sensitivity"),
-                ("Specificity", "Specificity"),
-                ("False Negative Rate (FNR)", "False_Negative_Rate"),
-                ("Calibration Error (ECE)", "ECE"),
-                ("Brier Score", "Brier_Score"),
-                ("Selective Error Rate (%)", "Selective_Error_Rate_Pct"),
-                ("Referral / Abstain Rate (%)", "Referral_Rate_Pct"),
-                ("Verification Precision", "Verification_Precision"),
-                ("Verification Recall", "Verification_Recall"),
-                ("Avg Inference Latency (ms)", "Avg_Latency_ms")
-            ]
-            for label, key in metrics_display:
-                df_rows.append({
-                    "Metric": label,
-                    "Exp A (Baseline)": table["Experiment_A_Baseline"][key],
-                    "Exp B (Rule-based)": table["Experiment_B_RuleBased"][key],
-                    "Exp C (Adaptive Reanalysis)": table["Experiment_C_AdaptiveReanalysis"][key],
-                    "Exp D (Full System)": table["Experiment_D_FullSystem"][key]
-                })
-
-            bench_df = pd.DataFrame(df_rows)
-            st.dataframe(bench_df, use_container_width=True, hide_index=True)
-
-            st.info(
-                "💡 **Clinical & Technical Effect:**\n"
-                "- **Exp D** demonstrates highest Selective Prediction Reliability by actively investigating contradictions before abstaining.\n"
-                "- **Exp C & D** dynamically resolve ambiguous boundary cases via targeted zoom crops.\n"
-                "- **Verification Recall** for detecting flawed/contradictory cases reaches 100% in Exp D."
-            )
-        else:
-            st.info("Click 'Run Live 4-Way Comparative Benchmark Evaluation' to generate metrics table.")
-
-    # ----------------------------------------------------
-    # TAB 7: Lung-RADS & Report Export
-    # ----------------------------------------------------
-    with tab7:
         st.subheader("Lung-RADS Estimate & Decision-Support Clinical Report")
         
         c_col1, c_col2 = st.columns([1.2, 1])
