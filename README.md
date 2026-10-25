@@ -155,6 +155,13 @@ python evaluate.py
 
 ### 5. Launch Interactive Clinical Dashboard
 
+**Windows (One-Click):**
+Double-click `start_project.bat` or run:
+```cmd
+start_project.bat
+```
+
+**Or via command line:**
 ```bash
 python -m streamlit run app.py
 ```
