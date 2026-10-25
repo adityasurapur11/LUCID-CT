@@ -328,8 +328,13 @@ def main():
                         slices.sort(key=lambda s: float(s.ImagePositionPatient[2]) if hasattr(s, 'ImagePositionPatient') and len(s.ImagePositionPatient) >= 3 else (float(s.SliceLocation) if hasattr(s, 'SliceLocation') else float(getattr(s, 'InstanceNumber', 0))))
                         vol = np.stack([s.pixel_array for s in slices], axis=0).astype(np.float32)
                         slope = float(getattr(slices[0], 'RescaleSlope', 1.0))
-                        intercept = float(getattr(slices[0], 'RescaleIntercept', 0.0))
+                        intercept = float(getattr(slices[0], 'RescaleIntercept', -1024.0))
                         vol = vol * slope + intercept
+                        if vol.ndim == 2:
+                            vol = np.tile(vol, (16, 1, 1))
+                        elif vol.ndim == 3 and vol.shape[0] < 16:
+                            indices = np.round(np.linspace(0, vol.shape[0] - 1, 16)).astype(int)
+                            vol = vol[indices]
                         current_volume = apply_hu_window(vol)
                         dcm_pid = getattr(slices[0], "PatientID", "ANONYMOUS_DICOM")
                         dcm_date_raw = str(getattr(slices[0], "StudyDate", ""))
@@ -358,13 +363,14 @@ def main():
                     slices.sort(key=lambda s: float(s.ImagePositionPatient[2]) if hasattr(s, 'ImagePositionPatient') and len(s.ImagePositionPatient) >= 3 else (float(s.SliceLocation) if hasattr(s, 'SliceLocation') else float(getattr(s, 'InstanceNumber', 0))))
                     vol = np.stack([s.pixel_array for s in slices], axis=0).astype(np.float32)
                     slope = float(getattr(slices[0], 'RescaleSlope', 1.0))
-                    intercept = float(getattr(slices[0], 'RescaleIntercept', 0.0))
+                    intercept = float(getattr(slices[0], 'RescaleIntercept', -1024.0))
                     vol = vol * slope + intercept
                     
                     if vol.ndim == 2:
                         vol = np.tile(vol, (16, 1, 1))
-                    elif vol.ndim == 3 and vol.shape[0] < 4:
-                        vol = np.repeat(vol, max(1, 16 // vol.shape[0]), axis=0)
+                    elif vol.ndim == 3 and vol.shape[0] < 16:
+                        indices = np.round(np.linspace(0, vol.shape[0] - 1, 16)).astype(int)
+                        vol = vol[indices]
 
                     current_volume = apply_hu_window(vol)
                     dcm_pid = getattr(slices[0], "PatientID", "ANONYMOUS_DICOM")
@@ -385,7 +391,12 @@ def main():
                         temp_path = tmp_file.name
                     try:
                         current_volume = load_nifti_file(temp_path)
-                        if current_volume.ndim == 3:
+                        if current_volume.ndim in (2, 3):
+                            if current_volume.ndim == 2:
+                                current_volume = np.tile(current_volume, (16, 1, 1))
+                            elif current_volume.ndim == 3 and current_volume.shape[0] < 16:
+                                indices = np.round(np.linspace(0, current_volume.shape[0] - 1, 16)).astype(int)
+                                current_volume = current_volume[indices]
                             current_volume = apply_hu_window(current_volume)
                             scan_info = f"Uploaded NIfTI: {uploaded_files[0].name}"
                             patient_id = f"NIFTI-{uploaded_files[0].name.split('.')[0]}"

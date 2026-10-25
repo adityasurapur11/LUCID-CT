@@ -157,6 +157,14 @@ def load_dicom_series(folder_path: str) -> np.ndarray:
         slope = float(slices[0].RescaleSlope)
         intercept = float(slices[0].RescaleIntercept)
         vol = vol * slope + intercept
+    else:
+        vol = vol * 1.0 - 1024.0
+
+    if vol.ndim == 2:
+        vol = np.tile(vol, (16, 1, 1))
+    elif vol.ndim == 3 and vol.shape[0] < 16:
+        indices = np.round(np.linspace(0, vol.shape[0] - 1, 16)).astype(int)
+        vol = vol[indices]
         
     return vol
 

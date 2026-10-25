@@ -314,7 +314,11 @@ class RadiologicalReportGenerator:
             font=font(24, True),
             fill=colors["navy"],
         )
-        probability = float(prediction_results["calibrated_prob"])
+        probability = float(
+            adaptive_results.get("final_calibrated_prob")
+            if adaptive_results and "final_calibrated_prob" in adaptive_results
+            else prediction_results.get("calibrated_prob", 0.0)
+        )
         draw.text(
             (margin + 36, summary_top + 133),
             f"Calibrated Malignancy Risk: {probability:.1%}",
@@ -467,6 +471,14 @@ class RadiologicalReportGenerator:
         # Radiological characteristics and explainability image
         y = section_title("Radiological Trait Evidence", right_x + 26, content_top + 25)
         trait_breakdown = verification_results.get("trait_breakdown", {})
+        fallback_traits = None
+        if adaptive_results and "final_traits" in adaptive_results:
+            fallback_traits = adaptive_results["final_traits"]
+        elif "radiological_traits" in lung_rads_info:
+            fallback_traits = lung_rads_info["radiological_traits"]
+        elif "trait_predictions" in prediction_results:
+            fallback_traits = prediction_results["trait_predictions"]
+
         trait_rows = (
             ("Spiculation", "Spiculation (1-5)"),
             ("Lobulation", "Lobulation (1-5)"),
@@ -484,7 +496,11 @@ class RadiologicalReportGenerator:
                     fill=colors["background"],
                 )
             draw.text((right_x + 32, row_top + 3), label, font=font(16), fill=colors["text"])
-            value = str(trait_breakdown.get(key, "N/A"))
+            val = trait_breakdown.get(key)
+            if (val is None or str(val).strip() == "" or str(val) == "N/A") and fallback_traits and index < len(fallback_traits):
+                value = f"{float(fallback_traits[index]):.2f}"
+            else:
+                value = str(val) if val is not None else "N/A"
             draw.text(
                 (right_x + column_width - 150, row_top + 3),
                 value,
