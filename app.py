@@ -254,11 +254,6 @@ def main():
     st.sidebar.caption("Clinical Decision Support AI for 3D Thoracic CT")
     st.sidebar.markdown("---")
 
-
-    st.sidebar.markdown("---")
-    st.sidebar.caption("📌 **Navigation:** Once a CT scan is loaded and analyzed, explore patient diagnostics, XAI, and reports across Tabs 1–6.")
-    st.sidebar.markdown("---")
-
     st.sidebar.header("⚙️ Controller & XAI Settings")
     mc_samples = st.sidebar.slider("Monte Carlo Dropout Samples (N):", min_value=5, max_value=30, value=15, step=5)
     enable_calibration = st.sidebar.checkbox("Enable Temperature Calibration", value=True)
