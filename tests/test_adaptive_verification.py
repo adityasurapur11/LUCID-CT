@@ -133,6 +133,11 @@ def test_adaptive_verification_controller(dummy_volume, model):
     assert "reanalysis_performed" in res
     assert "recommended_clinical_action" in res
 
+    assert "conformal_prediction" in res
+    assert "prediction_set" in res["conformal_prediction"]
+    assert res["conformal_prediction"]["prediction_set_labels"] in ["{Malignant}", "{Benign}", "{Benign, Malignant}", "{}"]
+    assert 0.0 < res["conformal_prediction"]["coverage_guarantee_pct"] <= 100.0
+
     # 2. Severe contradiction case (High cancer prob, but benign traits) -> Triggers re-analysis
     contradictory_traits = [1.0, 1.0, 1.0, 5.0, 5.0, 5.0]
     res_contra = controller.run_adaptive_verification_loop(
@@ -147,6 +152,64 @@ def test_adaptive_verification_controller(dummy_volume, model):
     )
     assert res_contra["reanalysis_performed"] is True
     assert "inconsistency_profile" in res_contra
+    assert "conformal_prediction" in res_contra
+
+
+def test_mondrian_conformal_gate():
+    from src.conformal_gate import MondrianConformalGate
+    gate = MondrianConformalGate(alpha=0.10)
+    assert gate.coverage_guarantee_pct == 90.0
+
+    # 1. Quality binning test
+    assert gate.get_quality_bin(85.0) == "HIGH_QUALITY"
+    assert gate.get_quality_bin(65.0) == "MEDIUM_QUALITY"
+    assert gate.get_quality_bin(40.0) == "LOW_QUALITY"
+
+    # 2. Confident clean high-quality scan -> singleton set {Malignant} -> clears gate
+    res_clean_mal = gate.predict_prediction_set(
+        calibrated_prob=0.92,
+        quality_score=88.0,
+        reanalysis_performed=False,
+        reanalysis_agreement=1.0,
+        epistemic_unc=0.02,
+        trait_grounding_score=0.92,
+        xai_fidelity_score=0.85,
+        has_inconsistency=False
+    )
+    assert res_clean_mal["prediction_set_labels"] == "{Malignant}"
+    assert res_clean_mal["is_cleared_by_gate"] is True
+    assert res_clean_mal["gate_status"] == "RELIABLE_PREDICTION"
+
+    # 3. Confident clean high-quality scan -> singleton set {Benign} -> clears gate
+    res_clean_ben = gate.predict_prediction_set(
+        calibrated_prob=0.08,
+        quality_score=85.0,
+        reanalysis_performed=False,
+        reanalysis_agreement=1.0,
+        epistemic_unc=0.02,
+        trait_grounding_score=0.90,
+        xai_fidelity_score=0.80,
+        has_inconsistency=False
+    )
+    assert res_clean_ben["prediction_set_labels"] == "{Benign}"
+    assert res_clean_ben["is_cleared_by_gate"] is True
+    assert res_clean_ben["gate_status"] == "RELIABLE_PREDICTION"
+
+    # 4. Noisy / low-quality / contradictory scan -> wider set {Benign, Malignant} -> enforces ABSTAIN
+    res_noisy_contra = gate.predict_prediction_set(
+        calibrated_prob=0.55,
+        quality_score=38.0,
+        reanalysis_performed=True,
+        reanalysis_agreement=0.50,
+        epistemic_unc=0.09,
+        trait_grounding_score=0.45,
+        xai_fidelity_score=0.40,
+        has_inconsistency=True,
+        trait_conflicts=["Spiculation contradiction"]
+    )
+    assert res_noisy_contra["prediction_set_labels"] == "{Benign, Malignant}"
+    assert res_noisy_contra["is_cleared_by_gate"] is False
+    assert res_noisy_contra["gate_status"] == "ABSTAIN_CLINICIAN_REVIEW_REQUIRED"
 
 
 def test_longitudinal_nodule_tracker(dummy_volume):

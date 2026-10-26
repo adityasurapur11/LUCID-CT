@@ -41,22 +41,25 @@
         `-- Convergence & Agreement Assessment (Agreement Index & CRI %)
         |
         v
-[ 5. Final Reliability Gate ]
-        |-- RELIABLE_PREDICTION              -- High CRI, Verified Evidence
-        |-- ADAPTIVELY_RESOLVED             -- Inconsistency Resolved via Re-Analysis
-        `-- ABSTAIN_CLINICIAN_REVIEW_REQUIRED -- Explicit Abstention + Specialist Referral
+[ 5. Mondrian Conformal Reliability Gate (Statistical Guarantee) ]
+        |-- Evidence-Integrated Nonconformity Score s(x, y)
+        |-- Scan-Quality Stratification (High, Medium, Low/Shifted Bins)
+        |-- Prediction Set: {Malignant} or {Benign} -> RELIABLE / RESOLVED
+        `-- Prediction Set: {Benign, Malignant} or {} -> ABSTAIN_CLINICIAN_REVIEW
 ```
 
 ---
 
 ## 🔬 Module Descriptions
 
-### 1. Adaptive Contradiction Detection & Targeted Re-Analysis
-Instead of passively issuing static warnings, the system actively investigates prediction ambiguities:
-- Diagnoses the precise source of contradiction (e.g. malignancy vs. benign traits, high epistemic uncertainty, or boundary discrepancies).
-- Dynamically executes targeted computational re-analysis operations (fine-grain 1.25x boundary zoom, orthogonal rotational symmetry, or adaptive denoising).
-- Computes the **Composite Reliability Index (CRI %)**.
-- Enforces an automated **Reliability Gate**: returns verified decisions or **explicitly abstains and refers to a thoracic radiologist** if ambiguity persists.
+### 1. Mondrian Conformal Prediction & Adaptive Verification Loop (`src/conformal_gate.py`)
+Replaces heuristic thresholding (e.g. static 75% CRI cutoff) with a finite-sample distribution-free statistical coverage guarantee (e.g. $\ge 90\%$ confidence):
+- **Evidence-Integrated Nonconformity**: Incorporates calibrated model probability, multi-scale targeted re-analysis agreement, epistemic variance, physical trait grounding, and XAI fidelity.
+- **Mondrian Stratification**: Calibrates separate conformal quantile cutoffs $\hat{q}^{(b)}_\alpha$ across scan-quality strata (`HIGH_QUALITY`, `MEDIUM_QUALITY`, `LOW_QUALITY` from `scan_quality.py`).
+- **Prediction Set Governed Gate**:
+  - $\{ \text{Malignant} \}$ or $\{ \text{Benign} \}$ $\to$ **`RELIABLE_PREDICTION`** / **`ADAPTIVELY_RESOLVED`** (Autonomous gate clearance).
+  - $\{ \text{Benign}, \text{Malignant} \}$ $\to$ **`ABSTAIN_CLINICIAN_REVIEW_REQUIRED`** (Model cannot statistically exclude either diagnosis; abstention is mandated).
+  - Noisy, shifted, or contradictory scans automatically produce wider prediction sets, elevating referral rates precisely where the model is least trustworthy.
 
 ### 2. Scan-Quality & Distribution-Shift Detection (`src/scan_quality.py`)
 - Automatically quantifies Signal-to-Noise Ratio (SNR in dB) and Laplacian high-frequency noise index.

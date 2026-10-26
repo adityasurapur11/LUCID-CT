@@ -367,7 +367,13 @@ class RadiologicalReportGenerator:
             gate_status = adaptive_results.get("final_status", "N/A")
             is_cleared = adaptive_results.get("is_cleared_by_gate", False)
             cri_score = adaptive_results.get("composite_reliability_index", 0.0)
-            status_text_display = f"{gate_status} (CRI: {cri_score:.1f}%)"
+            conf_pred = adaptive_results.get("conformal_prediction", {})
+            set_str = conf_pred.get("prediction_set_labels")
+            cov = conf_pred.get("coverage_guarantee_pct", 90.0)
+            if set_str:
+                status_text_display = f"{gate_status} | {set_str} ({cov:.0f}%)"
+            else:
+                status_text_display = f"{gate_status} (CRI: {cri_score:.1f}%)"
             status_fill = "soft_teal" if is_cleared else "soft_red"
             status_text_color = "teal" if is_cleared else "red"
         else:

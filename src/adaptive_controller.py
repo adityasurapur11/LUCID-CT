@@ -17,22 +17,25 @@ from src.preprocessing import extract_roi, apply_hu_window
 from src.scan_quality import ScanQualityAssessor
 from src.trait_verifier import TraitSpecificRegionalVerifier
 from src.xai_verifier import ExplanationFidelityVerifier
+from src.conformal_gate import MondrianConformalGate
 
 
 class AdaptiveVerificationController:
     """
     Closed-loop adaptive controller that actively investigates prediction ambiguities
     through targeted computational re-analysis before rendering a clinical decision.
+    Enforces a Mondrian Conformal Prediction Gate with finite-sample statistical guarantees.
     """
 
-    RELIABILITY_THRESHOLD: float = 75.0  # CRI score required to clear the Reliability Gate
+    RELIABILITY_THRESHOLD: float = 75.0  # Maintained for backward compatibility
     MAX_REANALYSIS_STEPS: int = 3
 
     def __init__(
         self,
         epistemic_threshold: float = 0.07,
         malignant_threshold: float = 0.50,
-        min_reanalysis_agreement: float = 0.70
+        min_reanalysis_agreement: float = 0.70,
+        conformal_alpha: float = 0.10
     ):
         self.epistemic_threshold = epistemic_threshold
         self.malignant_threshold = malignant_threshold
@@ -40,6 +43,7 @@ class AdaptiveVerificationController:
         self.trait_verifier = TraitSpecificRegionalVerifier()
         self.quality_assessor = ScanQualityAssessor()
         self.xai_verifier = ExplanationFidelityVerifier()
+        self.conformal_gate = MondrianConformalGate(alpha=conformal_alpha)
 
     def identify_inconsistency_profile(
         self,
@@ -338,42 +342,25 @@ class AdaptiveVerificationController:
             reanalysis_agreement=agreement_score
         )
 
-        # 7. Final Reliability Gate Decision Logic
-        has_fatal_quality = quality_res["recommended_pathway"] == "REJECT_CLINICIAN_REVIEW"
-        has_severe_contradiction = (
-            "CONTRADICTION_MALIGNANCY_VS_TRAITS" in inconsistency_prof["inconsistency_flags"] and
-            agreement_score < self.min_reanalysis_agreement
+        # 7. Mondrian Conformal Prediction Decision Gate
+        # Replaces heuristic thresholding with finite-sample statistical coverage guarantee
+        mean_re_prob = reanalysis_results.get("mean_reanalysis_prob") if reanalysis_results else None
+        conformal_res = self.conformal_gate.predict_prediction_set(
+            calibrated_prob=final_prob,
+            quality_score=quality_res["quality_score"],
+            reanalysis_performed=reanalysis_performed,
+            reanalysis_agreement=agreement_score,
+            mean_reanalysis_prob=mean_re_prob,
+            epistemic_unc=epistemic_unc,
+            trait_grounding_score=trait_res["composite_trait_grounding"],
+            xai_fidelity_score=xai_res["fidelity_score"],
+            has_inconsistency=inconsistency_prof["has_inconsistency"],
+            trait_conflicts=trait_res.get("trait_conflicts", [])
         )
 
-        if has_fatal_quality or has_severe_contradiction or cri < 65.0:
-            final_status = "ABSTAIN_CLINICIAN_REVIEW_REQUIRED"
-            clinical_action = (
-                "ABSTAIN: The automated system has withheld diagnostic clearance due to persistent "
-                f"verification contradictions or sub-threshold reliability (CRI: {cri:.1f}%). "
-                "Urgent manual diagnostic review by a thoracic radiologist is required."
-            )
-            is_cleared = False
-        elif reanalysis_performed and agreement_score >= self.min_reanalysis_agreement and cri >= self.RELIABILITY_THRESHOLD:
-            final_status = "ADAPTIVELY_RESOLVED"
-            clinical_action = (
-                "VERIFIED via Adaptive Re-Analysis: Initial inconsistency investigated and resolved "
-                f"with high multi-scale agreement ({agreement_score*100:.1f}%) and CRI ({cri:.1f}%). "
-                "Proceed with guideline-based clinical management."
-            )
-            is_cleared = True
-        elif cri >= self.RELIABILITY_THRESHOLD and not inconsistency_prof["has_inconsistency"]:
-            final_status = "RELIABLE_PREDICTION"
-            clinical_action = (
-                f"VERIFIED: Prediction passed all quality, trait physical grounding, and XAI fidelity checks (CRI: {cri:.1f}%)."
-            )
-            is_cleared = True
-        else:
-            final_status = "ABSTAIN_CLINICIAN_REVIEW_REQUIRED"
-            clinical_action = (
-                f"ABSTAIN: Uncertainty remains elevated after re-analysis (CRI: {cri:.1f}% < {self.RELIABILITY_THRESHOLD}%). "
-                "Refer to specialist multidisciplinary tumor board."
-            )
-            is_cleared = False
+        final_status = conformal_res["gate_status"]
+        is_cleared = conformal_res["is_cleared_by_gate"]
+        clinical_action = conformal_res["recommended_clinical_action"]
 
         return {
             "final_status": final_status,
@@ -388,5 +375,6 @@ class AdaptiveVerificationController:
             "reanalysis_details": reanalysis_results,
             "scan_quality": quality_res,
             "trait_grounding": trait_res,
-            "xai_fidelity": xai_res
+            "xai_fidelity": xai_res,
+            "conformal_prediction": conformal_res
         }
