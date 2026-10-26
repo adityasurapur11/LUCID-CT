@@ -40,6 +40,64 @@ def compute_brier_score(y_true: np.ndarray, y_probs: np.ndarray) -> float:
     return float(np.mean((y_probs - y_true) ** 2))
 
 
+def compute_confusion_matrix(
+    y_true: np.ndarray,
+    y_pred_or_probs: np.ndarray,
+    threshold: float = 0.50
+) -> Dict[str, Any]:
+    """
+    Computes a comprehensive clinical confusion matrix and derived diagnostic metrics.
+
+    Parameters:
+        y_true: Ground truth binary labels (0 = benign, 1 = malignant).
+        y_pred_or_probs: Binary predictions or continuous predicted probabilities.
+        threshold: Classification cutoff threshold if continuous probabilities are passed (default 0.50).
+
+    Returns:
+        Dictionary containing counts (tp, tn, fp, fn), rates, and clinical metrics.
+    """
+    y_t = np.asarray(y_true, dtype=int)
+    y_raw = np.asarray(y_pred_or_probs, dtype=float)
+
+    # If continuous probabilities, binarize by threshold; if already binary, respect 0/1
+    if np.any((y_raw > 0.0) & (y_raw < 1.0)):
+        y_p = (y_raw >= threshold).astype(int)
+    else:
+        y_p = (y_raw >= 0.50).astype(int)
+
+    tp = int(np.sum((y_p == 1) & (y_t == 1)))
+    tn = int(np.sum((y_p == 0) & (y_t == 0)))
+    fp = int(np.sum((y_p == 1) & (y_t == 0)))
+    fn = int(np.sum((y_p == 0) & (y_t == 1)))
+    total = int(len(y_t))
+
+    sensitivity = float(tp / max(tp + fn, 1))
+    specificity = float(tn / max(tn + fp, 1))
+    precision = float(tp / max(tp + fp, 1))
+    npv = float(tn / max(tn + fn, 1))
+    accuracy = float((tp + tn) / max(total, 1))
+    f1 = float(2.0 * tp / max(2 * tp + fp + fn, 1))
+    fnr = float(fn / max(tp + fn, 1))
+    fpr = float(fp / max(tn + fp, 1))
+
+    return {
+        "tp": tp,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn,
+        "total": total,
+        "sensitivity": round(sensitivity, 4),
+        "specificity": round(specificity, 4),
+        "precision": round(precision, 4),
+        "npv": round(npv, 4),
+        "accuracy": round(accuracy, 4),
+        "f1_score": round(f1, 4),
+        "false_negative_rate": round(fnr, 4),
+        "false_positive_rate": round(fpr, 4),
+        "threshold": float(threshold)
+    }
+
+
 class BenchmarkAblationSuite:
     """
     Executes Experiments A, B, C, D across an evaluation cohort of standard,
@@ -252,6 +310,8 @@ class BenchmarkAblationSuite:
 
             avg_latency = float(np.mean(data["latencies"]))
 
+            cm = compute_confusion_matrix(labels, probs, threshold=0.50)
+
             comparison_table[exp_name] = {
                 "AUROC": round(auroc, 3),
                 "Sensitivity": round(sensitivity, 3),
@@ -263,12 +323,24 @@ class BenchmarkAblationSuite:
                 "Referral_Rate_Pct": round(referral_rate, 1),
                 "Verification_Precision": round(verif_prec, 3),
                 "Verification_Recall": round(verif_rec, 3),
-                "Avg_Latency_ms": round(avg_latency, 1)
+                "Avg_Latency_ms": round(avg_latency, 1),
+                "Accuracy": cm["accuracy"],
+                "Precision": cm["precision"],
+                "F1_Score": cm["f1_score"],
+                "TP": cm["tp"],
+                "TN": cm["tn"],
+                "FP": cm["fp"],
+                "FN": cm["fn"],
+                "confusion_matrix": cm
             }
+            data["confusion_matrix"] = cm
+
+        confusion_matrices = {exp: comparison_table[exp]["confusion_matrix"] for exp in comparison_table}
 
         return {
             "comparison_table": comparison_table,
             "total_evaluated_scans": len(cohort),
             "num_flawed_test_cases": int(np.sum(flawed_gt)),
-            "raw_experiment_data": results
+            "raw_experiment_data": results,
+            "confusion_matrices": confusion_matrices
         }

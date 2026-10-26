@@ -186,13 +186,35 @@ def test_benchmark_ablation_suite(model):
     
     bench_res = suite.run_benchmark(cohort=cohort)
     assert "comparison_table" in bench_res
+    assert "confusion_matrices" in bench_res
     table = bench_res["comparison_table"]
-    
+
     for exp_key in ["Experiment_A_Baseline", "Experiment_B_RuleBased", "Experiment_C_AdaptiveReanalysis", "Experiment_D_FullSystem"]:
         assert exp_key in table
         assert "AUROC" in table[exp_key]
         assert "Sensitivity" in table[exp_key]
         assert "Selective_Error_Rate_Pct" in table[exp_key]
+        assert "Accuracy" in table[exp_key]
+        assert "Precision" in table[exp_key]
+        assert "F1_Score" in table[exp_key]
+        assert "confusion_matrix" in table[exp_key]
+        assert "tp" in table[exp_key]["confusion_matrix"]
+        assert "fn" in table[exp_key]["confusion_matrix"]
+
+
+def test_compute_confusion_matrix_standalone():
+    from src.evaluation import compute_confusion_matrix
+    y_true = np.array([1, 1, 0, 0, 1, 0])
+    y_pred = np.array([1, 0, 0, 1, 1, 0])
+    cm = compute_confusion_matrix(y_true, y_pred, threshold=0.50)
+    assert cm["tp"] == 2
+    assert cm["fn"] == 1
+    assert cm["fp"] == 1
+    assert cm["tn"] == 2
+    assert cm["total"] == 6
+    assert cm["sensitivity"] == round(2 / 3, 4)
+    assert cm["specificity"] == round(2 / 3, 4)
+    assert cm["accuracy"] == round(4 / 6, 4)
 
 
 def test_enhanced_report_generation(dummy_volume):

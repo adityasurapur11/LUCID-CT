@@ -8,7 +8,7 @@ from src.trait_verifier import TraitSpecificRegionalVerifier
 from src.xai_verifier import ExplanationFidelityVerifier
 from src.adaptive_controller import AdaptiveVerificationController
 from src.longitudinal import LongitudinalNoduleTracker
-from src.evaluation import BenchmarkAblationSuite
+from src.evaluation import BenchmarkAblationSuite, compute_confusion_matrix
 
 __version__ = "2.0.0"
 
@@ -20,4 +20,5 @@ __all__ = [
     "AdaptiveVerificationController",
     "LongitudinalNoduleTracker",
     "BenchmarkAblationSuite",
+    "compute_confusion_matrix",
 ]

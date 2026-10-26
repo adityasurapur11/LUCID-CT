@@ -48,8 +48,11 @@ def main():
 
     metrics_list = [
         ("AUROC", "AUROC"),
-        ("Sensitivity", "Sensitivity"),
+        ("Accuracy", "Accuracy"),
+        ("Sensitivity / Recall", "Sensitivity"),
         ("Specificity", "Specificity"),
+        ("Precision (PPV)", "Precision"),
+        ("F1-Score", "F1_Score"),
         ("False Negative Rate (FNR)", "False_Negative_Rate"),
         ("Calibration Error (ECE)", "ECE"),
         ("Brier Score", "Brier_Score"),

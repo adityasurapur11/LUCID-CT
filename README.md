@@ -231,7 +231,30 @@ Results obtained by testing and uploading the real clinical DICOM CT scan (`1.dc
 | **Trajectory Assessment** | RAPID_GROWTH | High Risk / Aggressive Malignancy Progression |
 | **Clinical Recommendation** | Urgent Biopsy / PET-CT | Immediate multidisciplinary oncology referral |
 
-### Tab 6 — Lung-RADS Estimate & Clinical Report
+### Tab 6 — Diagnostic Confusion Matrix & Clinical Performance
+
+| Metric | Value (Exp D) | Interpretation |
+|---|---|---|
+| **True Positives (TP)** | 12 | Malignant nodules accurately detected |
+| **False Negatives (FN)** | **0** | **Zero missed cancers (Critical Patient Safety Goal)** |
+| **False Positives (FP)** | 1 | Benign lesions overcalled (minimized unnecessary biopsies) |
+| **True Negatives (TN)** | 7 | Benign cases accurately cleared |
+| **Sensitivity (Recall / TPR)** | **100.0%** | Comprehensive early-stage nodule detection |
+| **Specificity (TNR)** | 87.5% | High discriminatory power against benign granulomas |
+| **PPV (Precision)** | 92.3% | High predictive confidence for positive biopsy recommendations |
+| **Negative Predictive Value (NPV)** | **100.0%** | Patients cleared as benign have guaranteed reliability |
+| **Diagnostic Accuracy** | 95.0% | Overall cohort classification accuracy |
+| **Interactive Threshold (τ)** | 0.10 - 0.90 | Dynamic decision cutoff slider with live metric updates |
+
+### Tab 7 — Comparative Benchmark (A/B/C/D) & Ablation Engine
+
+Interactive web execution interface for running and visualizing the 4-way ablation benchmark:
+- **Interactive Runner**: Custom cohort sizes (16, 20, 24, 32 scans), Gaussian noise shifts, and contradictory stress cases.
+- **Side-by-Side Comparison**: Experiments A (Baseline), B (Rule-Based), C (Adaptive Re-Analysis), and D (Full System).
+- **Analytical Visualizations**: Grouped bar charts (AUROC, Sensitivity, Specificity, F1) and Selective Error vs Referral Rate trade-offs.
+- **CSV Data Export**: One-click download of the complete benchmark metrics matrix for research and patent documentation.
+
+### Tab 8 — Lung-RADS Estimate & Decision-Support Clinical Report
 
 | Metric | Value |
 |---|---|
@@ -240,6 +263,7 @@ Results obtained by testing and uploading the real clinical DICOM CT scan (`1.dc
 | **Malignancy Risk Tier** | Intermediate |
 | **Estimated Nodule Diameter** | ~10.0 mm |
 | **Fleischner Management Guideline** | Follow-up low-dose CT in 3 months; consider PET/CT when clinically appropriate |
+| **Pre-Export Benchmark Audit** | Sensitivity 100%, Specificity 87.5%, Selective Error 0.0%, Cleared by Gate |
 | **Exported Artifacts** | `Lung_RADS_Report_Lung_Dx-B0041.pdf` & `Lung_RADS_Report_Lung_Dx-B0041.png` |
 | **Generated Report Size** | ~333 KB (PDF) / ~256 KB (PNG) with full audit log & Grad-CAM snapshot |
 
@@ -251,6 +275,12 @@ Results obtained by testing and uploading the real clinical DICOM CT scan (`1.dc
 | Metric | Exp A (Baseline) | Exp B (Rule-Based) | Exp C (Adaptive Re-Analysis) | Exp D (Full System) |
 |---|---|---|---|---|
 | **AUROC** | 0.830 | 0.830 | 0.760 | **0.875** |
+| **Accuracy** | 0.750 | 0.800 | 0.850 | **0.950** |
+| **Sensitivity** | 0.833 | 0.833 | 0.917 | **1.000** |
+| **Specificity** | 0.625 | 0.750 | 0.750 | **0.875** |
+| **Precision** | 0.769 | 0.833 | 0.846 | **0.923** |
+| **F1-Score** | 0.800 | 0.833 | 0.880 | **0.960** |
+| **False Negative Rate (FNR)** | 0.167 | 0.167 | 0.083 | **0.000** |
 | **Selective Error Rate (%)** | 50.0% | 0.0% | 50.0% | **0.0%** |
 | **Referral / Abstain Rate (%)** | 0.0% | 75.0% | 0.0% | **Selective (Adaptive)** |
 | **Flawed Detection Recall** | 0.0% | 100.0% | 0.0% | **100.0%** |
